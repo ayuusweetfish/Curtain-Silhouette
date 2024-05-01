@@ -1,0 +1,828 @@
+{
+  "schematics": {
+    "0fa0871f674146d78836c4c7b822a317": {
+      "name": "Schematic1",
+      "sheets": [
+        {
+          "name": "P1",
+          "id": 1,
+          "uuid": "8acc82d840e142f2a07fe2c6f9fa4e48"
+        }
+      ]
+    }
+  },
+  "pcbs": {
+    "826fb44e645a494088f90ac160a434f6": "PCB1"
+  },
+  "panels": {},
+  "symbols": {
+    "12712154ef7740a0bc43889fdfe234ca": {
+      "source": "6dcef7672cc04b13b00cc502a601a77a|0819f05c4eef4c71ace90d822a990e87",
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[\"传感器\",\"触摸芯片\"]",
+      "title": "TTP233H-BA6",
+      "version": "1700207151",
+      "type": 2
+    },
+    "14c81ef162f649e2a22c2b551f74b687": {
+      "source": "9b22c8ce281e45e586f53e833f42da4a|0819f05c4eef4c71ace90d822a990e87",
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[]",
+      "title": "CapAcitance",
+      "version": "1670465795",
+      "type": 2
+    },
+    "32081671e8f34a6988f0ac73e1de9592": {
+      "source": "af2f98ccb8aa4ae9b3bca4730ff6a41b|0819f05c4eef4c71ace90d822a990e87",
+      "desc": "SI2301CDS-T1-GE3",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[\"三极管/MOS管/晶体管\",\"场效应管(MOSFET)\"]",
+      "title": "SI2301CDS-T1-GE3",
+      "version": "1713160814",
+      "type": 2
+    },
+    "34f992f3fefa4e9e984765594c465020": {
+      "source": "f2baecf085944dad81faf9a0fd6bfcea|0819f05c4eef4c71ace90d822a990e87",
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[]",
+      "title": "Sheet-Symbol_A4",
+      "version": "1689648571",
+      "type": 20
+    },
+    "4d2307aafec34a279e40b8a1794f5059": {
+      "source": "c1b8b751a29345708c24bcef9a67e2b3|0819f05c4eef4c71ace90d822a990e87",
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[]",
+      "title": "Power-VCC",
+      "version": "1659060554",
+      "type": 18
+    },
+    "4f21b459ba964d67b0959f204a2ddf99": {
+      "source": "337f98afd0264cae93d16cc3bf65754a|0819f05c4eef4c71ace90d822a990e87",
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[\"电阻\",\"贴片电阻\"]",
+      "title": "电阻",
+      "version": "1653966354",
+      "type": 2
+    },
+    "5ba080fe469a4229b742f33a7d72d516": {
+      "source": "542d01b8b25e4236a453d7437c3944df|0819f05c4eef4c71ace90d822a990e87",
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[]",
+      "title": "Ground-GND",
+      "version": "1684225550",
+      "type": 18
+    },
+    "5c4c107623ab48278baf75bb085dfd90": {
+      "source": "c43e2bb0d889445891aaae0d1da7eb8e|user",
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[]",
+      "title": "Connector_Generic_Conn_01x02",
+      "version": "1660913003",
+      "type": 2
+    },
+    "77906a9549b840fda7e6216ab02f9185": {
+      "source": "030408cae81843d58925b21e52450909|0819f05c4eef4c71ace90d822a990e87",
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[\"传感器\",\"触摸芯片\"]",
+      "title": "AI01C",
+      "version": "1711511113",
+      "type": 2
+    },
+    "8c67cfcbe62844e798c01c7782c31443": {
+      "source": "3988f3c0bc93410d97b664ccdb6bcfd0|0819f05c4eef4c71ace90d822a990e87",
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[\"传感器\",\"触摸芯片\"]",
+      "title": "PT2041AT6",
+      "version": "1672870511",
+      "type": 2
+    },
+    "af825201af574dd888267db0f323975b": {
+      "source": "146cfb77eb714aa8b81f87ad48c96685|0819f05c4eef4c71ace90d822a990e87",
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[]",
+      "title": "MHPA3528RGBCT",
+      "version": "1714496521",
+      "type": 2
+    },
+    "cab34a796e5743f0951e5f57f741337b": {
+      "source": "4eeeb508ec414371bff34d3ffd943365|0819f05c4eef4c71ace90d822a990e87",
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[]",
+      "title": "Ground-AGND",
+      "version": "1684225539",
+      "type": 18
+    },
+    "d2601df927b74cbbb7272aee1e6e5220": {
+      "source": "0ef2c756326f421eab3c316c79eda910|0819f05c4eef4c71ace90d822a990e87",
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[]",
+      "title": "Test-Point",
+      "version": "1685024678",
+      "type": 2
+    },
+    "dc10b48a8f2d4d248fa36037c298c0a2": {
+      "source": "c1156c9ccc944b728b80c77c06d1a9aa|0819f05c4eef4c71ace90d822a990e87",
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[\"传感器\",\"触摸芯片\"]",
+      "title": "RH6015-C",
+      "version": "1700191561",
+      "type": 2
+    },
+    "d0dadc5c2e62403c80583e5b77341e1c": {
+      "source": "cb13464b399a4c6d90009aa57c50646f|0819f05c4eef4c71ace90d822a990e87",
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[\"三极管/MOS管/晶体管\",\"场效应管(MOSFET)\"]",
+      "title": "SI2302CDS-T1-E3",
+      "version": "1685429422",
+      "type": 2
+    }
+  },
+  "footprints": {
+    "710e688c8e87466da80227745e1ca0c2": {
+      "title": "PinHeader_1x02_P2.00mm_Vertical",
+      "source": "4b270a014ed64f25b4e84337a01d20e4|user",
+      "version": "1638355719",
+      "type": 4,
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[\"\",\"\"]"
+    },
+    "738f37a4fb2e49de9bb1280bb1a51623": {
+      "title": "Connector_PinSocket_2.54mm:PinSocket_1x02_P2.54mm_Vertical",
+      "source": "9e884b0fade14c48a73410dfc456bf51|user",
+      "version": "1660913003",
+      "type": 4,
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[]"
+    },
+    "7b949452f94b44558b503bc9e5cbe930": {
+      "title": "R0603",
+      "source": "50b4943912284dab97752312e589e9e2|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1676256338",
+      "type": 4,
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[\"RES-SMD\",\"\"]"
+    },
+    "920a16bc53104d91a210c86f89fd45be": {
+      "title": "SOT-23-6_L2.9-W1.7-P0.95-LS2.8-BL",
+      "source": "0993ca28bb2e4897a6dc99101ea8bc1d|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1652421448",
+      "type": 4,
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[\"SOT-23-6\"]"
+    },
+    "9af3fdee317a45a88ca28612773b274e": {
+      "title": "C0603",
+      "source": "76d6c29a47804db487f8a92b2621751b|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1675328510",
+      "type": 4,
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[\"CAP-SMD\",\"\"]"
+    },
+    "bda426834a8b4291870cc5c1fd9ef151": {
+      "title": "SOT-23-3_L3.0-W1.7-P0.95-LS2.9-BR",
+      "source": "fae38395b68f489a87a99c91828ad0fa|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1711332212",
+      "type": 4,
+      "desc": ";SOT-23(TO-236);SOT-23;SOT-23W;SOT-23-3L;SOT-23-3;-;SOT-23-3S;SC-59-3;SUPERSOT-3;SOT-23-3LK;SOT-23S;SC-59A;SOT-323-3;SOT-523-3;SOT-23(SOT-23-3);TL431_C181103;TO-236AB;SOT-23-3(TO-236-3);LGA-4(1.5x1.5);SOT-23-3-5;SOT23;TO-236-3;SOT23-3",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[\"SOT-23-3\"]"
+    },
+    "cf19c240bc7d4637bb37812986a9ccb0": {
+      "title": "SOT-23-6_L2.9-W1.6-P0.95-LS2.8-BR",
+      "source": "47d9e12405e949c2b190fdcf22199fbb|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1690330044",
+      "type": 4,
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[\"SOT-23-6\"]"
+    },
+    "e3904aeffefb47a0a61d3e1ddadf9344": {
+      "title": "PinHeader_1x02_P1.00mm_Vertical",
+      "source": "914691d053354887a93a806afe6561ee|user",
+      "version": "1638355718",
+      "type": 4,
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[\"\",\"\"]"
+    },
+    "e4fc6f32d71f4f93957d24aa6bbdcdd5": {
+      "title": "LED-ARRAY-SMD_4P-L3.5-W2.8-TL",
+      "source": "a746ac540220483195d005aa6880c992|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1650334425",
+      "type": 4,
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[\"LED-ARRAY-SMD\"]"
+    },
+    "edcd755c3e4541b490c5bb76fc442eff": {
+      "title": "Test-Point-0.5mm",
+      "source": "e44e8913964d4a4db53eb387244727d6|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1699580824",
+      "type": 4,
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[\"\",\"\"]"
+    },
+    "f1cc13647e844688be41c64ca874c218": {
+      "title": "SOT-23-6_L2.9-W1.6-P0.95-LS2.8-BL",
+      "source": "3c60dc918974420eb4105dc403eb98d3|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1680917675",
+      "type": 4,
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[\"SOT-23-6\"]"
+    },
+    "ea8619ad702a4b108e4abeef8f30319d": {
+      "title": "SOT-23-3_L2.9-W1.3-P1.90-LS2.4-BR",
+      "source": "bdad16194d454cb292a50525f39c3ffd|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1651211575",
+      "type": 4,
+      "desc": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "custom_tags": "[\"SOT-23-3\"]"
+    }
+  },
+  "devices": {
+    "0415491e6d85417c8cb48d138f53271d": {
+      "title": "Test-Point",
+      "attributes": {
+        "Designator": "TP?",
+        "Add into BOM": "yes",
+        "Convert to PCB": "yes",
+        "Symbol": "d2601df927b74cbbb7272aee1e6e5220",
+        "Name": "",
+        "3D Model": "",
+        "3D Model Title": "",
+        "3D Model Transform": "",
+        "Footprint": "edcd755c3e4541b490c5bb76fc442eff",
+        "Description": "Test Point 测试点"
+      },
+      "description": "Test Point 测试点",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "images": [],
+      "source": "d45be48edf5f4f4eb9e20c75671b7f3b|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1685024678",
+      "custom_tags": "[]"
+    },
+    "0a660e47ee014522a6f53e0124d8c9ba": {
+      "title": "TTP233H-BA6",
+      "attributes": {
+        "LCSC Part Name": "TTP233H-BA6",
+        "Supplier Part": "C2890349",
+        "Manufacturer": "TONTEK(通泰)",
+        "Manufacturer Part": "TTP233H-BA6",
+        "Supplier Footprint": "SOT-23-6L",
+        "JLCPCB Part Class": "扩展库",
+        "Datasheet": "https://atta.szlcsc.com/upload/public/pdf/source/20210906/B48FDD4D347312208019B4D153A9DAB9.pdf",
+        "Supplier": "LCSC",
+        "Add into BOM": "yes",
+        "Convert to PCB": "yes",
+        "Symbol": "12712154ef7740a0bc43889fdfe234ca",
+        "Designator": "U?",
+        "Footprint": "920a16bc53104d91a210c86f89fd45be",
+        "3D Model": "f198fe6923cc4b1fabccb73198a22cca",
+        "3D Model Title": "SOT-23-6_L2.9-W1.7-P0.95-LS2.8-BL",
+        "3D Model Transform": "114.173,110.236,0,0,0,0,0,0,0",
+        "Name": "={Manufacturer Part}",
+        "Description": ""
+      },
+      "description": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "images": [
+        "https://alimg.szlcsc.com/upload/public/product/middle/20230107/DF34CDABB229A26E567F319EFD92F31F.jpg"
+      ],
+      "source": "bb6ff22a62a544c8b37b26c7fb20134b|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1655497397",
+      "custom_tags": "[\"传感器\",\"触摸芯片\"]"
+    },
+    "0f3dc7b800f14d4db2bcd4b646d35b8e": {
+      "title": "Power-VCC",
+      "attributes": {
+        "Symbol": "4d2307aafec34a279e40b8a1794f5059",
+        "Global Net Name": "VCC",
+        "Footprint": ""
+      },
+      "description": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "images": [
+        ""
+      ],
+      "source": "b381658129d94456b54f23250ef5a375|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1659060554",
+      "custom_tags": "[]"
+    },
+    "14a50b27660649a5b780af59006e2335": {
+      "title": "PT2041AT6",
+      "attributes": {
+        "LCSC Part Name": "PT2041AT6",
+        "Supplier Part": "C2914231",
+        "Manufacturer": "PinTENG(品腾)",
+        "Manufacturer Part": "PT2041AT6",
+        "Supplier Footprint": "SOT-23-6",
+        "JLCPCB Part Class": "扩展库",
+        "Datasheet": "https://atta.szlcsc.com/upload/public/pdf/source/20211105/8C4F525B38003B073B0E115195B616B0.pdf",
+        "Supplier": "LCSC",
+        "Add into BOM": "yes",
+        "Convert to PCB": "yes",
+        "Symbol": "8c67cfcbe62844e798c01c7782c31443",
+        "Designator": "U?",
+        "Footprint": "cf19c240bc7d4637bb37812986a9ccb0",
+        "3D Model": "18da8f6c14a34920b3e136b5c401a119",
+        "3D Model Title": "SOT-23-6_L2.9-W1.6-H1.5-LS2.8-P0.95",
+        "3D Model Transform": "110.73671,114.173,0,180,0,0,0.001,-0.003,0",
+        "The Channel Number": "1",
+        "Whether the Lock": "否",
+        "Operating Voltage": "2.4V~5.5V",
+        "Operating Current": "2uA",
+        "Operating Temperature": "-40℃~+85℃",
+        "Name": "={Manufacturer Part}",
+        "Description": "通道数:1;是否自锁:否;"
+      },
+      "description": "通道数:1;是否自锁:否;",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "images": [
+        "https://alimg.szlcsc.com/upload/public/product/middle/20230105/9A32C2B66CA28FD216DFDD6E4A02695E.jpg"
+      ],
+      "source": "024c0cc8eedd47069e42a85698d26e14|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1654895207",
+      "custom_tags": "[\"传感器\",\"触摸芯片\"]"
+    },
+    "2e23aa59e86141eebd6da3ac43eae125": {
+      "title": "Sheet-Symbol_A4",
+      "attributes": {
+        "Symbol": "34f992f3fefa4e9e984765594c465020",
+        "@Page Name": "",
+        "@Create Date": "",
+        "@Page Count": "",
+        "@Page No": "",
+        "@Project Name": "",
+        "@Schematic Name": "",
+        "@Update Date": "",
+        "Company": "嘉立创EDA",
+        "Device": "",
+        "Drawed": "",
+        "Page Size": "A4",
+        "Part Number": "",
+        "Reviewed": "",
+        "Version": "V1.0",
+        "Footprint": ""
+      },
+      "description": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "images": [
+        ""
+      ],
+      "source": "4b872d674c0b4b0e8ede0a73cf1a0316|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1664282381",
+      "custom_tags": "[\"\",\"\"]"
+    },
+    "4e57ebdf047e46bfbb2d505235a6fa2d": {
+      "title": "Res_0603",
+      "attributes": {
+        "Convert to PCB": "yes",
+        "Add into BOM": "yes",
+        "Designator": "R?",
+        "Supplier Footprint": "0603",
+        "Symbol": "4f21b459ba964d67b0959f204a2ddf99",
+        "Footprint": "7b949452f94b44558b503bc9e5cbe930",
+        "3D Model": "fc143cca1e79419f9cd78b61e9279f08",
+        "3D Model Title": "R0603",
+        "3D Model Transform": "31.8897,63.7794,0,90,0,0,0,0,0",
+        "Value": "10K",
+        "Name": "={Value}",
+        "Description": ""
+      },
+      "description": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "images": [
+        ""
+      ],
+      "source": "f61af53b8d604d888b6dd9daa1a301b0|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1653975500",
+      "custom_tags": "[\"电阻\",\"贴片电阻\"]"
+    },
+    "584997eee8f841da8fbbf375bb2892c4": {
+      "title": "CAP_0603",
+      "attributes": {
+        "Convert to PCB": "yes",
+        "Add into BOM": "yes",
+        "Designator": "C?",
+        "Supplier Footprint": "0603",
+        "Symbol": "14c81ef162f649e2a22c2b551f74b687",
+        "Footprint": "9af3fdee317a45a88ca28612773b274e",
+        "3D Model": "ac125912035d415993ca9572d50418b1",
+        "3D Model Title": "C0603_L1.6-W0.8-H0.8",
+        "3D Model Transform": "62.992,31.496,0,0,0,0,0,0,0",
+        "Value": "100nF",
+        "Name": "={Value}",
+        "Description": ""
+      },
+      "description": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "images": [
+        ""
+      ],
+      "source": "4e48d71315ce4d4c9f2ca294a3b1380b|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1670465822",
+      "custom_tags": "[]"
+    },
+    "7421546bee7a4208a597a52cb8965844": {
+      "title": "AI01C",
+      "attributes": {
+        "LCSC Part Name": "单通道触摸芯片",
+        "Supplier Part": "C2943977",
+        "Manufacturer": "Sam&wing(芯网)",
+        "Manufacturer Part": "AI01C",
+        "Supplier Footprint": "SOT-23-6L",
+        "JLCPCB Part Class": "扩展库",
+        "Datasheet": "https://atta.szlcsc.com/upload/public/pdf/source/20220822/7FBF328F0E1B91F043D74B98771C088B.pdf",
+        "Supplier": "LCSC",
+        "Add into BOM": "yes",
+        "Convert to PCB": "yes",
+        "Symbol": "77906a9549b840fda7e6216ab02f9185",
+        "Designator": "U?",
+        "Footprint": "f1cc13647e844688be41c64ca874c218",
+        "3D Model": "18da8f6c14a34920b3e136b5c401a119",
+        "3D Model Title": "SOT-23-6_L2.9-W1.6-H1.5-LS2.8-P0.95",
+        "3D Model Transform": "110.236,113.364,0,90,0,0,0.0005,0.0005,0",
+        "The Channel Number": "1",
+        "Name": "={Manufacturer Part}",
+        "Description": "通道数:1;"
+      },
+      "description": "通道数:1;",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "images": [
+        "https://alimg.szlcsc.com/upload/public/product/middle/20230107/F772612FD7D13368EC598723C94A1F8B.jpg"
+      ],
+      "source": "1a88c8c2b1a34f95bbb6a30f5bb1e941|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1658174852",
+      "custom_tags": "[\"传感器\",\"触摸芯片\"]"
+    },
+    "a078fc324b5e470a82cfd3747bf34fd8": {
+      "title": "RH6015C",
+      "attributes": {
+        "LCSC Part Name": "RH6015C",
+        "Supplier Part": "C78180",
+        "Manufacturer": "RONGHE(融和)",
+        "Manufacturer Part": "RH6015C",
+        "Supplier Footprint": "SOT-23-6",
+        "JLCPCB Part Class": "扩展库",
+        "Datasheet": "https://atta.szlcsc.com/upload/public/pdf/source/20180817/C78180_E4E9444B91B4959CB61DC2F6C2FF41BB.pdf",
+        "Supplier": "LCSC",
+        "Add into BOM": "yes",
+        "Convert to PCB": "yes",
+        "Symbol": "dc10b48a8f2d4d248fa36037c298c0a2",
+        "Designator": "U?",
+        "Footprint": "cf19c240bc7d4637bb37812986a9ccb0",
+        "3D Model": "18da8f6c14a34920b3e136b5c401a119",
+        "3D Model Title": "SOT-23-6_L2.9-W1.6-H1.5-LS2.8-P0.95",
+        "3D Model Transform": "110.73671,114.173,0,180,0,0,0.001,-0.003,0",
+        "The Channel Number": "1",
+        "Chip Function": "电容式触摸",
+        "Whether the Lock": "否",
+        "Operating Voltage": "2.3V~5.5V",
+        "Operating Current": "5uA",
+        "Operating Temperature": "-20℃~+85℃",
+        "Name": "={Manufacturer Part}",
+        "Description": "通道数:1;芯片功能:电容式触摸;是否自锁:否;"
+      },
+      "description": "通道数:1;芯片功能:电容式触摸;是否自锁:否;",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "images": [
+        "https://alimg.szlcsc.com/upload/public/product/middle/20221231/7288FB5627610182AD9A8A251321B5F7.jpg"
+      ],
+      "source": "c3134eb485fc488bb7193f15769a8afa|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1655842806",
+      "custom_tags": "[\"传感器\",\"触摸芯片\"]"
+    },
+    "c83dd5b64f4c4bb4a70b6903d6155383": {
+      "title": "Ground-AGND",
+      "attributes": {
+        "Global Net Name": "AGND",
+        "Name": "AGND",
+        "Symbol": "cab34a796e5743f0951e5f57f741337b",
+        "3D Model": "",
+        "3D Model Title": "",
+        "3D Model Transform": "",
+        "Footprint": ""
+      },
+      "description": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "images": [
+        ""
+      ],
+      "source": "020e090fae1746909dc2ba708097eb8f|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1684225539",
+      "custom_tags": "[]"
+    },
+    "db66531e65a24afeb3cc93c666c1a19d": {
+      "title": "MHPA3528RGBCT",
+      "attributes": {
+        "LCSC Part Name": "RGB三色",
+        "Supplier Part": "C409779",
+        "Manufacturer": "MEIHUA(美华)",
+        "Manufacturer Part": "MHPA3528RGBCT",
+        "Supplier Footprint": "SMD3528",
+        "JLCPCB Part Class": "扩展库",
+        "Datasheet": "https://atta.szlcsc.com/upload/public/pdf/source/20190902/C409779_9EA0C46D876E94D2A4E683BAC3DDD702.pdf",
+        "Supplier": "LCSC",
+        "Add into BOM": "yes",
+        "Convert to PCB": "yes",
+        "Symbol": "af825201af574dd888267db0f323975b",
+        "Designator": "LED?",
+        "Footprint": "e4fc6f32d71f4f93957d24aa6bbdcdd5",
+        "3D Model": "56ff90bf859d44da9ad2b7463973d02d",
+        "3D Model Title": "LED-ARRAY-SMD_4P-L3.5-W2.8-TL",
+        "3D Model Transform": "137.795,110.236,0,0,0,0,0.002,0.004,0",
+        "Name": "={Manufacturer Part}",
+        "Description": ""
+      },
+      "description": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "images": [
+        "https://alimg.szlcsc.com/upload/public/product/middle/20230109/FBE9D5177C3E8DC7988C6F4BDFAD6EFD.jpg"
+      ],
+      "source": "f939c5e5e3f8458eaf87cf60188de224|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1657124406",
+      "custom_tags": "[]"
+    },
+    "df75bf59f8fb4dbc8fac591d09004908": {
+      "title": "Ground-GND",
+      "attributes": {
+        "Global Net Name": "GND",
+        "Name": "GND",
+        "Symbol": "5ba080fe469a4229b742f33a7d72d516",
+        "3D Model": "",
+        "3D Model Title": "",
+        "3D Model Transform": "",
+        "Footprint": ""
+      },
+      "description": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "images": [
+        ""
+      ],
+      "source": "9a64ac5790a940f7ae40fc736dc6faff|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1684225550",
+      "custom_tags": "[]"
+    },
+    "e2461767fea74af8b8393e73beb7f5d4": {
+      "title": "Connector_Generic_Conn_01x02",
+      "attributes": {
+        "Designator": "J?",
+        "Add into BOM": "yes",
+        "Convert to PCB": "yes",
+        "Symbol": "5c4c107623ab48278baf75bb085dfd90",
+        "Value": "Conn_01x02",
+        "User doc link": "~",
+        "Name": "Connector_Generic_Conn_01x02",
+        "Footprint": "738f37a4fb2e49de9bb1280bb1a51623",
+        "Description": ""
+      },
+      "description": "",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "images": [],
+      "source": "2b7c5616f30a4b839899ab7550979f55|user",
+      "version": "1660913003",
+      "custom_tags": "[]"
+    },
+    "f7578ec6cbb84a10afbfbddced28294a": {
+      "title": "SI2301CDS-T1-GE3",
+      "attributes": {
+        "LCSC Part Name": "1个P沟道 耐压:20V 电流:3.1A",
+        "Supplier Part": "C10487",
+        "Manufacturer": "VISHAY(威世)",
+        "Manufacturer Part": "SI2301CDS-T1-GE3",
+        "Supplier Footprint": "SOT-23",
+        "JLCPCB Part Class": "基础库",
+        "Datasheet": "https://atta.szlcsc.com/upload/public/pdf/source/20180621/C10487_757133A2CC00440C4C7DD3E7E73681E9.pdf",
+        "Supplier": "LCSC",
+        "Add into BOM": "yes",
+        "Convert to PCB": "yes",
+        "Symbol": "32081671e8f34a6988f0ac73e1de9592",
+        "Designator": "Q?",
+        "Footprint": "bda426834a8b4291870cc5c1fd9ef151",
+        "3D Model": "89cb27a44ab2466697082bb9fd73a7d0",
+        "3D Model Title": "SOT-23-3L_L2.9-W1.6-H1.1-LS2.8-P0.95",
+        "3D Model Transform": "114.173,110.236,0,90,0,0,0,0,0",
+        "Type": "1个P沟道",
+        "Drain Source Voltage (Vdss)": "20V",
+        "Continuous Drain Current (Id)": "3.1A",
+        "Power Dissipation (Pd)": "860mW；1.6W",
+        "Drain Source On Resistance (RDS(on)@Vgs,Id)": "112mΩ@4.5V,2.8A",
+        "Gate Threshold Voltage (Vgs(th)@Id)": "1V@250uA",
+        "Total Gate Charge (Qg@Vgs)": "10nC@4.5V",
+        "Input Capacitance (Ciss@Vds)": "405pF@10V",
+        "Reverse Transfer Capacitance (Crss@Vds)": "-",
+        "Operating Temperature": "-55℃~+150℃@(Tj)",
+        "Name": "={Manufacturer Part}",
+        "Description": "类型:1个P沟道;漏源电压(Vdss):20V;连续漏极电流(Id):3.1A;功率(Pd):860mW；1.6W;导通电阻(RDS(on)@Vgs,Id):112mΩ@4.5V,2.8A;阈值电压(Vgs(th)@Id):1V@250uA;"
+      },
+      "description": "类型:1个P沟道;漏源电压(Vdss):20V;连续漏极电流(Id):3.1A;功率(Pd):860mW；1.6W;导通电阻(RDS(on)@Vgs,Id):112mΩ@4.5V,2.8A;阈值电压(Vgs(th)@Id):1V@250uA;",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "images": [
+        "https://alimg.szlcsc.com/upload/public/product/middle/20221228/3D7D1A282A80857D4D6721B834014AA4.jpg"
+      ],
+      "source": "f04890a5733d46f3af20c86c64fc9097|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1658435055",
+      "custom_tags": "[\"三极管/MOS管/晶体管\",\"场效应管(MOSFET)\"]"
+    },
+    "1e1f650cc88641d6977a1fe0bf2b7b4c": {
+      "title": "SI2302CDS-T1-E3",
+      "attributes": {
+        "LCSC Part Name": "N沟道 耐压:20V 电流:2.6A",
+        "Supplier Part": "C141544",
+        "Manufacturer": "VISHAY(威世)",
+        "Manufacturer Part": "SI2302CDS-T1-E3",
+        "Supplier Footprint": "SOT-23",
+        "JLCPCB Part Class": "扩展库",
+        "Datasheet": "https://atta.szlcsc.com/upload/public/pdf/source/20171123/C141544_15114109293231137539.pdf",
+        "Supplier": "LCSC",
+        "Add into BOM": "yes",
+        "Convert to PCB": "yes",
+        "Symbol": "d0dadc5c2e62403c80583e5b77341e1c",
+        "Designator": "Q?",
+        "Footprint": "ea8619ad702a4b108e4abeef8f30319d",
+        "3D Model": "c62791f0466c4ae2a892c056b845b0ca",
+        "3D Model Title": "SOT-23-3P_L2.9-W1.3-H1.0-LS2.4-P0.95",
+        "3D Model Transform": "98.425,114.173,0,180,0,0,0.0005,-0.0005,0",
+        "Type": "N沟道",
+        "Drain Source Voltage (Vdss)": "20V",
+        "Continuous Drain Current (Id)": "2.6A",
+        "Power Dissipation (Pd)": "710mW",
+        "Drain Source On Resistance (RDS(on)@Vgs,Id)": "57mΩ@4.5V,3.6A",
+        "Gate Threshold Voltage (Vgs(th)@Id)": "850mV@250uA",
+        "Total Gate Charge (Qg@Vgs)": "5.5nC@4.5V",
+        "Operating Temperature": "-55℃~+150℃@(Tj)",
+        "Name": "={Manufacturer Part}",
+        "Description": "类型:N沟道;漏源电压(Vdss):20V;连续漏极电流(Id):2.6A;功率(Pd):710mW;导通电阻(RDS(on)@Vgs,Id):57mΩ@4.5V,3.6A;阈值电压(Vgs(th)@Id):850mV@250uA;"
+      },
+      "description": "类型:N沟道;漏源电压(Vdss):20V;连续漏极电流(Id):2.6A;功率(Pd):710mW;导通电阻(RDS(on)@Vgs,Id):57mΩ@4.5V,3.6A;阈值电压(Vgs(th)@Id):850mV@250uA;",
+      "tags": {
+        "parent_tag": [],
+        "child_tag": []
+      },
+      "images": [
+        "https://alimg.szlcsc.com/upload/public/product/middle/20230110/B30E004066AAF7C9BF6D34B9D72FAEFA.jpg"
+      ],
+      "source": "014e2104b9d64c2385bc97563b269fc1|0819f05c4eef4c71ace90d822a990e87",
+      "version": "1656447926",
+      "custom_tags": "[\"三极管/MOS管/晶体管\",\"场效应管(MOSFET)\"]"
+    }
+  },
+  "boards": {
+    "Board1": {
+      "schematic": "0fa0871f674146d78836c4c7b822a317",
+      "pcb": "826fb44e645a494088f90ac160a434f6"
+    }
+  },
+  "config": {
+    "title": "CapTestbench_240501",
+    "cbbProject": false,
+    "defaultSheet": "2e23aa59e86141eebd6da3ac43eae125",
+    "editorVersion": "2.1.57"
+  }
+}
