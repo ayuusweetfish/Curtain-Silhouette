@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP SN74AHCT245PWR
+D Texas Instruments SN74AHCT245PWR, Bus Transceiver, 8-Bit Non-Inverting CMOS, 5V, 20-Pin TSSOP
+K
+F http://www.ti.com/lit/gpn/sn74ahct245
+$ENDCMP
+#
+#End Doc Library
