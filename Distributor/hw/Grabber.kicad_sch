@@ -1296,7 +1296,7 @@
     (stroke (width 0) (type default))
     (uuid 4c3e0896-cf8d-435e-ba2e-481a7c5cea2a)
   )
-  (wire (pts (xy 103.505 43.18) (xy 106.045 43.18))
+  (wire (pts (xy 102.235 43.18) (xy 106.045 43.18))
     (stroke (width 0) (type default))
     (uuid 4d5b8898-4032-4539-99f0-a1ea7243ce65)
   )
@@ -2183,31 +2183,6 @@
     )
   )
 
-  (symbol (lib_id "power:GND") (at 103.505 43.18 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
-    (uuid 9f4668d0-b801-4b96-898d-9694f0433f67)
-    (property "Reference" "#PWR049" (at 103.505 49.53 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (property "Value" "GND" (at 103.505 47.625 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (property "Footprint" "" (at 103.505 43.18 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (property "Datasheet" "" (at 103.505 43.18 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (pin "1" (uuid 58c92dc3-8fe2-44aa-bc3b-b1f83d7b25bc))
-    (instances
-      (project "Distributor"
-        (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "#PWR049") (unit 1)
-        )
-      )
-    )
-  )
-
   (symbol (lib_id "power:GND") (at 121.285 127 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid a3160872-7463-4cb1-b6a6-b0d131fe96fa)
@@ -2544,6 +2519,31 @@
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
           (reference "#PWR048") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol (lib_id "power:VDD") (at 102.235 43.18 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (uuid e884eb1a-669d-4068-af86-2e12ef026200)
+    (property "Reference" "#PWR049" (at 102.235 46.99 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Value" "VDD" (at 102.235 38.735 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "" (at 102.235 43.18 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Datasheet" "" (at 102.235 43.18 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid f99a64b8-74a0-4ecf-9429-7c3352b2905b))
+    (instances
+      (project "Distributor"
+        (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
+          (reference "#PWR049") (unit 1)
         )
       )
     )

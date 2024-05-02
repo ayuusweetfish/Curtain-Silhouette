@@ -4,7 +4,7 @@
   (tags "Integrated Circuit")
   (attr smd)
   (fp_text reference "REF**" (at 0 0) (layer "F.SilkS")
-      (effects (font (size 0.9 0.9) (thickness 0.15) bold))
+      (effects (font (size 1 1) (thickness 0.15) bold))
     (tstamp 700773ee-ac21-4741-a3f4-b087df47afc5)
   )
   (fp_text value "SOP65P640X120-20N" (at 0 0) (layer "F.SilkS") hide
