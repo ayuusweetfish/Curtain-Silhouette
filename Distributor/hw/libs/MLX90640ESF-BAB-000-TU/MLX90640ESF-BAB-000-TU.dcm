@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP MLX90640ESF-BAB-000-TU
+D Board Mount Temperature Sensors 32X24 thermal array sensor, 3Volt, 60deg total FOV
+K
+F https://componentsearchengine.com/Datasheets/1/MLX90640ESF-BAB-000-TU.pdf
+$ENDCMP
+#
+#End Doc Library
