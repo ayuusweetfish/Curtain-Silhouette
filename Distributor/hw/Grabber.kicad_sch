@@ -1797,7 +1797,7 @@
   (symbol (lib_id "Connector_Generic_MountingPin:Conn_01x06_MountingPin") (at 41.275 49.53 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid 12a04748-c451-4da3-ad31-a8553441c606)
-    (property "Reference" "J4" (at 40.005 41.275 0)
+    (property "Reference" "J8" (at 40.005 41.275 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "Conn_01x06_MountingPin" (at 44.45 52.4256 0)
@@ -1819,7 +1819,7 @@
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "J4") (unit 1)
+          (reference "J8") (unit 1)
         )
       )
     )
@@ -1879,7 +1879,7 @@
   (symbol (lib_id "Device:C") (at 71.12 142.875 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid 3426b27f-2733-4581-8377-03e08781e5aa)
-    (property "Reference" "C14" (at 74.295 141.605 0)
+    (property "Reference" "C16" (at 74.295 141.605 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "100n" (at 74.295 144.145 0)
@@ -1896,7 +1896,7 @@
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "C14") (unit 1)
+          (reference "C16") (unit 1)
         )
       )
     )
@@ -2032,7 +2032,7 @@
   (symbol (lib_id "Device:C") (at 141.605 28.575 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid 6d7c4ace-25d4-4bd9-983d-739ab08f975f)
-    (property "Reference" "C12" (at 144.78 27.305 0)
+    (property "Reference" "C14" (at 144.78 27.305 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "100n" (at 144.78 29.845 0)
@@ -2049,7 +2049,7 @@
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "C12") (unit 1)
+          (reference "C14") (unit 1)
         )
       )
     )
@@ -2058,7 +2058,7 @@
   (symbol (lib_id "Device:C") (at 59.69 142.875 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid 71918976-01b8-44e0-9ab7-158719bbe4be)
-    (property "Reference" "C13" (at 62.865 141.605 0)
+    (property "Reference" "C15" (at 62.865 141.605 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "10u" (at 62.865 144.145 0)
@@ -2075,7 +2075,7 @@
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "C13") (unit 1)
+          (reference "C15") (unit 1)
         )
       )
     )
@@ -2084,7 +2084,7 @@
   (symbol (lib_id "Device:C") (at 129.54 28.575 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid 72a382b2-9314-46f9-a133-8d0d84e61558)
-    (property "Reference" "C11" (at 132.715 27.305 0)
+    (property "Reference" "C13" (at 132.715 27.305 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "4.7u" (at 132.715 29.845 0)
@@ -2101,7 +2101,7 @@
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "C11") (unit 1)
+          (reference "C13") (unit 1)
         )
       )
     )
@@ -2407,7 +2407,7 @@
   (symbol (lib_id "Connector_Generic:Conn_01x04") (at 41.275 28.575 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid b195598a-4785-41ff-bad2-d9b24f11f87e)
-    (property "Reference" "J3" (at 40.005 22.86 0)
+    (property "Reference" "J7" (at 40.005 22.86 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "Conn_01x04" (at 43.815 31.115 0)
@@ -2426,7 +2426,7 @@
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "J3") (unit 1)
+          (reference "J7") (unit 1)
         )
       )
     )
@@ -2435,7 +2435,7 @@
   (symbol (lib_id "Connector_Generic:Conn_02x09_Odd_Even") (at 43.815 113.03 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid bd35688b-e444-4eda-978a-87afd84cd889)
-    (property "Reference" "J5" (at 45.085 99.06 0)
+    (property "Reference" "J9" (at 45.085 99.06 0)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "Conn_02x09_Odd_Even" (at 45.085 99.695 0)
@@ -2468,7 +2468,7 @@
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "J5") (unit 1)
+          (reference "J9") (unit 1)
         )
       )
     )

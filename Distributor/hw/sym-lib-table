@@ -2,4 +2,5 @@
   (version 7)
   (lib (name "SN74AHCT245PWR")(type "KiCad")(uri "${KIPRJMOD}/libs/SN74AHCT245PWR/SN74AHCT245PWR.kicad_sym")(options "")(descr ""))
   (lib (name "MLX90640ESF-BAB-000-TU")(type "KiCad")(uri "${KIPRJMOD}/libs/MLX90640ESF-BAB-000-TU/MLX90640ESF-BAB-000-TU.kicad_sym")(options "")(descr ""))
+  (lib (name "Distributor_symbols")(type "KiCad")(uri "${KIPRJMOD}/Distributor_symbols.kicad_sym")(options "")(descr ""))
 )
