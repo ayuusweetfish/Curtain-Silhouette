@@ -1853,7 +1853,7 @@
   (symbol (lib_id "Device:R") (at 180.975 61.595 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid 34264189-d31a-4485-a1a0-1db986c6856f)
-    (property "Reference" "R8" (at 182.88 60.325 0)
+    (property "Reference" "R12" (at 182.88 60.325 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "1.8k" (at 182.88 62.865 0)
@@ -1870,7 +1870,7 @@
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "R8") (unit 1)
+          (reference "R12") (unit 1)
         )
       )
     )
@@ -1955,7 +1955,7 @@
   (symbol (lib_id "Device:R") (at 149.225 77.47 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid 5e49d549-7161-494f-85de-f74833e64a9a)
-    (property "Reference" "R4" (at 151.13 76.2 0)
+    (property "Reference" "R8" (at 151.13 76.2 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "1M" (at 151.13 78.74 0)
@@ -1972,7 +1972,7 @@
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "R4") (unit 1)
+          (reference "R8") (unit 1)
         )
       )
     )
@@ -2006,7 +2006,7 @@
   (symbol (lib_id "Device:R") (at 53.975 86.36 90) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid 690c6375-33d9-4c04-8183-b676a393b085)
-    (property "Reference" "R6" (at 53.975 80.645 90)
+    (property "Reference" "R10" (at 53.975 80.645 90)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "4.7k TBD" (at 53.975 83.185 90)
@@ -2023,7 +2023,7 @@
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "R6") (unit 1)
+          (reference "R10") (unit 1)
         )
       )
     )
@@ -2108,9 +2108,9 @@
   )
 
   (symbol (lib_id "Device:R") (at 172.72 61.595 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (in_bom yes) (on_board yes) (dnp no)
     (uuid 7ccea8e6-7801-4aca-9369-9263779dae53)
-    (property "Reference" "R7" (at 174.625 60.325 0)
+    (property "Reference" "R11" (at 174.625 60.325 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "1.8k" (at 174.625 62.865 0)
@@ -2127,7 +2127,7 @@
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "R7") (unit 1)
+          (reference "R11") (unit 1)
         )
       )
     )
@@ -2552,7 +2552,7 @@
   (symbol (lib_id "Device:LED") (at 43.18 76.2 180) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid f0c51fce-1686-4fb0-9ee2-1dbd8152b172)
-    (property "Reference" "D3" (at 44.45 69.85 0)
+    (property "Reference" "D7" (at 44.45 69.85 0)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "White" (at 44.45 72.39 0)
@@ -2569,7 +2569,7 @@
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "D3") (unit 1)
+          (reference "D7") (unit 1)
         )
       )
     )
@@ -2628,7 +2628,7 @@
   (symbol (lib_id "Device:R") (at 53.975 76.2 90) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid fb664f47-8626-4ff6-b1a5-b1aa22c67d56)
-    (property "Reference" "R5" (at 53.975 70.485 90)
+    (property "Reference" "R9" (at 53.975 70.485 90)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "4.7k TBD" (at 53.975 73.025 90)
@@ -2645,7 +2645,7 @@
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "R5") (unit 1)
+          (reference "R9") (unit 1)
         )
       )
     )
@@ -2654,7 +2654,7 @@
   (symbol (lib_id "Device:LED") (at 43.18 86.36 180) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid fc9d1eff-b1bc-430c-b7b5-6d1b0a960e41)
-    (property "Reference" "D4" (at 44.45 80.01 0)
+    (property "Reference" "D8" (at 44.45 80.01 0)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "White" (at 44.45 82.55 0)
@@ -2671,7 +2671,7 @@
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "D4") (unit 1)
+          (reference "D8") (unit 1)
         )
       )
     )
