@@ -44,6 +44,8 @@ static void swv_printf(const char *restrict fmt, ...)
 #define swv_printf(...)
 #endif
 
+TIM_HandleTypeDef tim3;
+
 int main()
 {
   HAL_Init();
@@ -95,11 +97,26 @@ int main()
   HAL_GPIO_Init(GPIOF, &gpio_init);
   HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0 | GPIO_PIN_1, 1);
 
+  __HAL_RCC_TIM3_CLK_ENABLE();
+  tim3 = (TIM_HandleTypeDef){
+    .Instance = TIM3,
+    .Init = {
+      .Prescaler = 64000 - 1,
+      .CounterMode = TIM_COUNTERMODE_UP,
+      .Period = 1000 - 1,
+      .ClockDivision = TIM_CLOCKDIVISION_DIV1,
+      .RepetitionCounter = 0,
+    },
+  };
+  HAL_TIM_Base_Init(&tim3);
+  // HAL_TIM_Base_Start(&tim3);
+  HAL_TIM_Base_Start_IT(&tim3);
+  HAL_NVIC_SetPriority(TIM3_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(TIM3_IRQn);
+
   while (1) {
-    HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 0); HAL_Delay(500);
-    HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 1); HAL_Delay(500);
-    HAL_GPIO_WritePin(GPIOF, GPIO_PIN_1, 0); HAL_Delay(500);
-    HAL_GPIO_WritePin(GPIOF, GPIO_PIN_1, 1); HAL_Delay(500);
+    HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 0); HAL_Delay(499);
+    HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 1); HAL_Delay(499);
   }
 }
 
@@ -126,7 +143,14 @@ void DMA1_Ch4_5_DMAMUX1_OVR_IRQHandler() { while (1) { } }
 void ADC1_IRQHandler() { while (1) { } }
 void TIM1_BRK_UP_TRG_COM_IRQHandler() { while (1) { } }
 void TIM1_CC_IRQHandler() { while (1) { } }
-void TIM3_IRQHandler() { while (1) { } }
+void TIM3_IRQHandler() {
+  if (__HAL_TIM_GET_FLAG(&tim3, TIM_FLAG_UPDATE) &&
+      __HAL_TIM_GET_IT_SOURCE(&tim3, TIM_IT_UPDATE)) {
+    __HAL_TIM_CLEAR_IT(&tim3, TIM_IT_UPDATE);
+    static int p = 0;
+    HAL_GPIO_WritePin(GPIOF, GPIO_PIN_1, p ^= 1);
+  }
+}
 void TIM14_IRQHandler() { while (1) { } }
 void TIM16_IRQHandler() { while (1) { } }
 void TIM17_IRQHandler() { while (1) { } }
