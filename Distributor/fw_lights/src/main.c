@@ -45,6 +45,7 @@ static void swv_printf(const char *restrict fmt, ...)
 #endif
 
 TIM_HandleTypeDef tim3;
+DMA_HandleTypeDef dma1_ch1;
 
 int main()
 {
@@ -97,26 +98,66 @@ int main()
   HAL_GPIO_Init(GPIOF, &gpio_init);
   HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0 | GPIO_PIN_1, 1);
 
+  // ======== DMA and timer ========
+  __HAL_RCC_DMA1_CLK_ENABLE();
+  dma1_ch1.Instance = DMA1_Channel1;
+  dma1_ch1.Init.Request = DMA_REQUEST_TIM3_UP;
+  dma1_ch1.Init.Direction = DMA_MEMORY_TO_PERIPH;
+  dma1_ch1.Init.PeriphInc = DMA_PINC_DISABLE;
+  dma1_ch1.Init.MemInc = DMA_MINC_ENABLE;
+  dma1_ch1.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+  dma1_ch1.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
+  // dma1_ch1.Init.Mode = DMA_CIRCULAR;
+  dma1_ch1.Init.Mode = DMA_NORMAL;
+  dma1_ch1.Init.Priority = DMA_PRIORITY_LOW;
+  HAL_DMA_Init(&dma1_ch1);
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+
   __HAL_RCC_TIM3_CLK_ENABLE();
   tim3 = (TIM_HandleTypeDef){
     .Instance = TIM3,
     .Init = {
-      .Prescaler = 64000 - 1,
+      .Prescaler = 32000 - 1,
       .CounterMode = TIM_COUNTERMODE_UP,
       .Period = 1000 - 1,
       .ClockDivision = TIM_CLOCKDIVISION_DIV1,
-      .RepetitionCounter = 0,
+      .RepetitionCounter = 1,
     },
   };
   HAL_TIM_Base_Init(&tim3);
-  // HAL_TIM_Base_Start(&tim3);
+/*
   HAL_TIM_Base_Start_IT(&tim3);
   HAL_NVIC_SetPriority(TIM3_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(TIM3_IRQn);
+*/
+
+  HAL_TIM_Base_Start(&tim3);
+  __HAL_LINKDMA(&tim3, hdma[TIM_DMA_ID_UPDATE], dma1_ch1);
+  __HAL_TIM_ENABLE_DMA(&tim3, TIM_DMA_UPDATE);
+
+  static uint32_t w[32] = {
+    1 << 17, 1 << 17, 1 << 1, 1 << 17,
+    1 << 1, 1 << 17, 1 << 1, 1 << 17,
+  };
+  swv_printf("DMA state %d (CCR %08x / ISR %08x / GPIOF_ODR %08x) (w %08x / CNDTR %08x / CMAR %08x / CPAR %08x)\n", (int)dma1_ch1.State, DMA1_Channel1->CCR, DMA1->ISR, GPIOF->ODR, (uint32_t)w, DMA1_Channel1->CNDTR, DMA1_Channel1->CMAR, DMA1_Channel1->CPAR);
+  // int a = HAL_DMA_Start_IT(&dma1_ch1, (uint32_t)w, (uint32_t)&(GPIOF->BSRR), sizeof w / 4);
+  int a = HAL_DMA_Start(&dma1_ch1, (uint32_t)w, (uint32_t)&(GPIOF->BSRR), 8);
+  swv_printf("start result %d\n", a);
+  // Starts with:
+  // DMA state 2 (CCR 00000a11 / ISR 00000000 / GPIOF_ODR 00000003) (w 20000008 / CNDTR 00000008 / CMAR 20000008 / CPAR 50001418)
+  // turns to the following at first TIM3 update event:
+  // DMA state 2 (CCR 00000a10 / ISR 00000009 / GPIOF_ODR 00000003) (w 20000008 / CNDTR 00000008 / CMAR 20000008 / CPAR 50001418)
+  // CCR.TEIF1 is set, indicating an error: DMA cannot access GPIO in 'G0
+  // Ref: https://community.st.com/t5/stm32-mcus-products/stm32g030-dma-to-gpio-bsrr-bus-error/td-p/291235
+  for (int i = 0; i < 50; i++) {
+    swv_printf("DMA state %d (CCR %08x / ISR %08x / GPIOF_ODR %08x) (w %08x / CNDTR %08x / CMAR %08x / CPAR %08x)\n", (int)dma1_ch1.State, DMA1_Channel1->CCR, DMA1->ISR, GPIOF->ODR, (uint32_t)w, DMA1_Channel1->CNDTR, DMA1_Channel1->CMAR, DMA1_Channel1->CPAR);
+  }
 
   while (1) {
     HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 0); HAL_Delay(499);
     HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 1); HAL_Delay(499);
+    swv_printf("DMA state %d (CCR %08x / ISR %08x) (w %08x / CNDTR %08x / CMAR %08x)\n", (int)dma1_ch1.State, DMA1_Channel1->CCR, DMA1->ISR, (uint32_t)w, DMA1_Channel1->CNDTR, DMA1_Channel1->CMAR);
   }
 }
 
@@ -137,19 +178,23 @@ void RCC_IRQHandler() { while (1) { } }
 void EXTI0_1_IRQHandler() { while (1) { } }
 void EXTI2_3_IRQHandler() { while (1) { } }
 void EXTI4_15_IRQHandler() { while (1) { } }
-void DMA1_Channel1_IRQHandler() { while (1) { } }
+void DMA1_Channel1_IRQHandler() {
+  HAL_DMA_IRQHandler(&dma1_ch1);
+}
 void DMA1_Channel2_3_IRQHandler() { while (1) { } }
 void DMA1_Ch4_5_DMAMUX1_OVR_IRQHandler() { while (1) { } }
 void ADC1_IRQHandler() { while (1) { } }
 void TIM1_BRK_UP_TRG_COM_IRQHandler() { while (1) { } }
 void TIM1_CC_IRQHandler() { while (1) { } }
 void TIM3_IRQHandler() {
+/*
   if (__HAL_TIM_GET_FLAG(&tim3, TIM_FLAG_UPDATE) &&
       __HAL_TIM_GET_IT_SOURCE(&tim3, TIM_IT_UPDATE)) {
     __HAL_TIM_CLEAR_IT(&tim3, TIM_IT_UPDATE);
     static int p = 0;
     HAL_GPIO_WritePin(GPIOF, GPIO_PIN_1, p ^= 1);
   }
+*/
 }
 void TIM14_IRQHandler() { while (1) { } }
 void TIM16_IRQHandler() { while (1) { } }
