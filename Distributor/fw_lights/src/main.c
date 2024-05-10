@@ -130,7 +130,7 @@ int main()
       .Prescaler = 1 - 1,
       // .Prescaler = 10000 - 1,
       .CounterMode = TIM_COUNTERMODE_UP,
-      .Period = 20 - 1,
+      .Period = 16 - 1,
       // .Period = 2000 - 1,
       .ClockDivision = TIM_CLOCKDIVISION_DIV1,
       .RepetitionCounter = 0,
@@ -141,15 +141,56 @@ int main()
   // HAL_NVIC_SetPriority(TIM3_IRQn, 1, 0);
   // HAL_NVIC_EnableIRQ(TIM3_IRQn);
 
+  inline uint32_t my_rand() {
+    uint32_t seed = 2451023;
+    seed = seed * 1103515245 + 12345;
+    return seed & 0x7fffffff;
+  }
+
 // #define GPIOx GPIOF
 #define GPIOx GPIOA
+  int count = 0;
   while (1) {
     __disable_irq();
     run();
     __enable_irq();
-    // HAL_Delay(1000);
-    HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 0); HAL_Delay(499);
-    HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 1); HAL_Delay(499);
+    // HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 0); HAL_Delay(499);
+    // HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 1); HAL_Delay(499);
+    HAL_Delay(18);
+    if (0) for (int i = 0; i < 2; i++)
+      for (int j = 0; j < 3; j++) {
+        int b = (colours[i] >> (j * 8)) & 0xff;
+        if (b == 0x00) colours[i] += (1 << (j * 8));
+        else if (b == 0x80) colours[i] -= (1 << (j * 8));
+        else if (my_rand() % 2 == 0) colours[i] += (1 << (j * 8));
+        else colours[i] -= (1 << (j * 8));
+      }
+
+    float rate1 = 0.5f * (1 + sinf(count * (float)(0.02 * M_PI * 2)));
+    float rate2 = 0.5f * (1 + sinf(count * (float)(0.02 * M_PI * 2) + (float)(M_PI * 0.5)));
+    float rate3 = 0.5f * (1 + sinf(count * (float)(0.02 * M_PI * 2) + (float)(M_PI * 1)));
+    float rate4 = 0.5f * (1 + sinf(count * (float)(0.02 * M_PI * 2) + (float)(M_PI * 1.5)));
+    // colours[0] = ((uint8_t)(0x11 * rate1) << 16) | ((uint8_t)(0x44 * rate1) << 8) | (uint8_t)(0x00 * rate1);
+    // colours[1] = ((uint8_t)(0x33 * rate2) << 16) | ((uint8_t)(0x00 * rate2) << 8) | (uint8_t)(0x11 * rate2);
+    colours[0] =
+      ((uint8_t)(0x11 * rate1 + 0x33 * rate2) << 16) |
+      ((uint8_t)(0x44 * rate1 + 0x00 * rate2) <<  8) |
+      ((uint8_t)(0x00 * rate1 + 0x11 * rate2) <<  0);
+    colours[1] =
+      ((uint8_t)(0x11 * rate3 + 0x33 * rate4) << 16) |
+      ((uint8_t)(0x44 * rate3 + 0x00 * rate4) <<  8) |
+      ((uint8_t)(0x00 * rate3 + 0x11 * rate4) <<  0);
+    if (1) for (int i = 0; i < 2; i++) {
+      for (int j = 0; j < 24; j++) {
+        int bit = (colours[i] >> (23 - j)) & 1;
+        out_buf[24 * i + j] = -bit;
+      }
+    }
+
+    if (++count % 50 == 0) {
+      if (count == 100) count = 0;
+      HAL_GPIO_TogglePin(GPIOF, GPIO_PIN_0);
+    }
   }
 
   while (1) {
@@ -166,13 +207,18 @@ void run()
   TIM3->SR = ~TIM_SR_UIF;
   for (int i = 0; i < 48; i++) {
     while ((TIM3->SR & TIM_SR_UIF) == 0) { } TIM3->SR = ~TIM_SR_UIF;
+
     GPIOx->ODR = 0xffff;
     while ((TIM3->SR & TIM_SR_UIF) == 0) { } TIM3->SR = ~TIM_SR_UIF;
+
     GPIOx->ODR = out_buf[i];
     while ((TIM3->SR & TIM_SR_UIF) == 0) { } TIM3->SR = ~TIM_SR_UIF;
+    // GPIOx->ODR = out_buf[i];
+    while ((TIM3->SR & TIM_SR_UIF) == 0) { } TIM3->SR = ~TIM_SR_UIF;
+
     GPIOx->ODR = 0x0000;
     while ((TIM3->SR & TIM_SR_UIF) == 0) { } TIM3->SR = ~TIM_SR_UIF;
-    GPIOx->ODR = 0x0000;
+    // GPIOx->ODR = 0x0000;
   }
 }
 
