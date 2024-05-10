@@ -51,7 +51,6 @@ volatile uint16_t out_buf[48];
 volatile int out_buf_ptr = 0, out_buf_sub = 0;
 
 inline void run();
-inline void bench();
 
 int main()
 {
@@ -131,8 +130,8 @@ int main()
       .Prescaler = 1 - 1,
       // .Prescaler = 10000 - 1,
       .CounterMode = TIM_COUNTERMODE_UP,
-      .Period = 27 - 1, // 26
-      // .Period = 2700 - 1,
+      .Period = 20 - 1,
+      // .Period = 2000 - 1,
       .ClockDivision = TIM_CLOCKDIVISION_DIV1,
       .RepetitionCounter = 0,
     },
@@ -141,8 +140,6 @@ int main()
   HAL_TIM_Base_Start_IT(&tim3);
   // HAL_NVIC_SetPriority(TIM3_IRQn, 1, 0);
   // HAL_NVIC_EnableIRQ(TIM3_IRQn);
-
-  // bench();
 
 // #define GPIOx GPIOF
 #define GPIOx GPIOA
@@ -155,7 +152,6 @@ int main()
     HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 1); HAL_Delay(499);
   }
 
-  // while (1) { }
   while (1) {
     HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 0); HAL_Delay(499);
     HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 1); HAL_Delay(499);
@@ -163,6 +159,7 @@ int main()
   }
 }
 
+// LED used is WS2812 (instead of WS2812B; the timing requirements are different)
 #pragma GCC optimize("O3")
 void run()
 {
@@ -174,22 +171,9 @@ void run()
     GPIOx->ODR = out_buf[i];
     while ((TIM3->SR & TIM_SR_UIF) == 0) { } TIM3->SR = ~TIM_SR_UIF;
     GPIOx->ODR = 0x0000;
+    while ((TIM3->SR & TIM_SR_UIF) == 0) { } TIM3->SR = ~TIM_SR_UIF;
+    GPIOx->ODR = 0x0000;
   }
-}
-
-#pragma GCC optimize("O3")
-void bench()
-{
-  int count = 0;
-  uint32_t start = HAL_GetTick();
-  while (HAL_GetTick() != start) { }  // Wait for a tick change
-  start = HAL_GetTick();
-  while (HAL_GetTick() - start < 10) {
-    count++;
-    run();
-  }
-  // count = 162
-  swv_printf("count %d\n", count);
 }
 
 void SysTick_Handler()
