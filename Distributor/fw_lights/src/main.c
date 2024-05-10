@@ -50,6 +50,9 @@ TIM_HandleTypeDef tim3;
 volatile uint16_t out_buf[48];
 volatile int out_buf_ptr = 0, out_buf_sub = 0;
 
+inline void run();
+inline void bench();
+
 int main()
 {
   HAL_Init();
@@ -109,7 +112,10 @@ int main()
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
 
   // GRB8
-  uint32_t colours[2] = {0x11ff00, 0xc00040};
+  // White works well; some 0's are recognised as 1's
+  uint32_t colours[2] = {0x114400, 0x330011};
+  // uint32_t colours[2] = {0x000000, 0x000000};
+  // uint32_t colours[2] = {0xffffff, 0xffffff};
   for (int i = 0; i < 2; i++) {
     for (int j = 0; j < 24; j++) {
       int bit = (colours[i] >> (23 - j)) & 1;
@@ -125,16 +131,29 @@ int main()
       .Prescaler = 1 - 1,
       // .Prescaler = 10000 - 1,
       .CounterMode = TIM_COUNTERMODE_UP,
-      .Period = 2600 - 1, // 26
+      .Period = 27 - 1, // 26
       // .Period = 2700 - 1,
       .ClockDivision = TIM_CLOCKDIVISION_DIV1,
-      .RepetitionCounter = 1,
+      .RepetitionCounter = 0,
     },
   };
   HAL_TIM_Base_Init(&tim3);
   HAL_TIM_Base_Start_IT(&tim3);
-  HAL_NVIC_SetPriority(TIM3_IRQn, 1, 0);
-  HAL_NVIC_EnableIRQ(TIM3_IRQn);
+  // HAL_NVIC_SetPriority(TIM3_IRQn, 1, 0);
+  // HAL_NVIC_EnableIRQ(TIM3_IRQn);
+
+  // bench();
+
+// #define GPIOx GPIOF
+#define GPIOx GPIOA
+  while (1) {
+    __disable_irq();
+    run();
+    __enable_irq();
+    // HAL_Delay(1000);
+    HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 0); HAL_Delay(499);
+    HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 1); HAL_Delay(499);
+  }
 
   // while (1) { }
   while (1) {
@@ -142,6 +161,35 @@ int main()
     HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 1); HAL_Delay(499);
     HAL_TIM_Base_Start_IT(&tim3);
   }
+}
+
+#pragma GCC optimize("O3")
+void run()
+{
+  TIM3->SR = ~TIM_SR_UIF;
+  for (int i = 0; i < 48; i++) {
+    while ((TIM3->SR & TIM_SR_UIF) == 0) { } TIM3->SR = ~TIM_SR_UIF;
+    GPIOx->ODR = 0xffff;
+    while ((TIM3->SR & TIM_SR_UIF) == 0) { } TIM3->SR = ~TIM_SR_UIF;
+    GPIOx->ODR = out_buf[i];
+    while ((TIM3->SR & TIM_SR_UIF) == 0) { } TIM3->SR = ~TIM_SR_UIF;
+    GPIOx->ODR = 0x0000;
+  }
+}
+
+#pragma GCC optimize("O3")
+void bench()
+{
+  int count = 0;
+  uint32_t start = HAL_GetTick();
+  while (HAL_GetTick() != start) { }  // Wait for a tick change
+  start = HAL_GetTick();
+  while (HAL_GetTick() - start < 10) {
+    count++;
+    run();
+  }
+  // count = 162
+  swv_printf("count %d\n", count);
 }
 
 void SysTick_Handler()
@@ -167,38 +215,7 @@ void DMA1_Ch4_5_DMAMUX1_OVR_IRQHandler() { while (1) { } }
 void ADC1_IRQHandler() { while (1) { } }
 void TIM1_BRK_UP_TRG_COM_IRQHandler() { while (1) { } }
 void TIM1_CC_IRQHandler() { while (1) { } }
-#pragma GCC optimize("O3")
-// -O3 is not enough. This should work under 27 cycles
-void TIM3_IRQHandler() {
-  // if (__HAL_TIM_GET_FLAG(&tim3, TIM_FLAG_UPDATE) &&
-  //     __HAL_TIM_GET_IT_SOURCE(&tim3, TIM_IT_UPDATE)) {
-  if (1) {
-    __HAL_TIM_CLEAR_IT(&tim3, TIM_IT_UPDATE);
-    // static int p = 0;
-    // HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, p ^= 1);
-
-#define GPIOx GPIOA
-    int sub = out_buf_sub;
-    int ptr = out_buf_ptr;
-    if (sub == 0) {
-      GPIOx->ODR = 0xffff;
-    } else if (sub == 1) {
-      GPIOx->ODR = out_buf[ptr];
-    } else {
-      assert(sub == 2);
-      GPIOx->ODR = 0x0000;
-    }
-    if (++sub == 3) {
-      sub = 0;
-      if (++ptr == 48) {
-        ptr = 0;
-        HAL_TIM_Base_Stop(&tim3);
-      }
-      out_buf_ptr = ptr;
-    }
-    out_buf_sub = sub;
-  }
-}
+void TIM3_IRQHandler() { while (1) { } }
 void TIM14_IRQHandler() { while (1) { } }
 void TIM16_IRQHandler() { while (1) { } }
 void TIM17_IRQHandler() { while (1) { } }
