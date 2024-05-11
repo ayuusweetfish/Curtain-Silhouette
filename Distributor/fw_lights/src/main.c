@@ -47,6 +47,9 @@ static void swv_printf(const char *restrict fmt, ...)
 
 TIM_HandleTypeDef tim3;
 SPI_HandleTypeDef spi2;
+DMA_HandleTypeDef dma1_ch1;
+
+uint8_t spi_rx_buf[2];
 
 volatile uint16_t out_buf[48];
 volatile int out_buf_ptr = 0, out_buf_sub = 0;
@@ -173,10 +176,35 @@ int main()
   };
   HAL_SPI_Init(&spi2);
 
+  // ======== DMA1 Ch1 (SPI2 Rx) ========
+  __HAL_RCC_DMA1_CLK_ENABLE();
+  dma1_ch1 = (DMA_HandleTypeDef){
+    .Instance = DMA1_Channel1,
+    .Init = (DMA_InitTypeDef){
+      .Request = DMA_REQUEST_SPI2_RX,
+      .Direction = DMA_PERIPH_TO_MEMORY,
+      .PeriphInc = DMA_PINC_DISABLE,
+      .MemInc = DMA_MINC_ENABLE,
+      .PeriphDataAlignment = DMA_PDATAALIGN_BYTE,
+      .MemDataAlignment = DMA_MDATAALIGN_BYTE,
+      .Mode = DMA_NORMAL,
+      .Priority = DMA_PRIORITY_HIGH,
+    },
+  };
+
+  __HAL_LINKDMA(&spi2, hdmarx, dma1_ch1);
+  HAL_DMA_Init(&dma1_ch1);
+  __HAL_DMA_ENABLE_IT(&dma1_ch1, DMA_IT_TC | DMA_IT_TE);
+  __HAL_DMA_ENABLE(&dma1_ch1);
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+
+  HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 2);
   while (1) {
-    uint8_t data[2];
-    int result = HAL_SPI_Receive(&spi2, data, 2, 2000);
-    swv_printf("SPI rx result = %d, data = %02x %02x\n", result, (int)data[0], (int)data[1]);
+    swv_printf("data %02x %02x\n", (int)spi_rx_buf[0], (int)spi_rx_buf[1]);
+    HAL_Delay(400);
+    // Data (transmitted every second) changes every 1~2 prints
+    // due to time spent in debugger transmission
   }
 
   inline uint32_t my_rand() {
@@ -278,7 +306,19 @@ void RCC_IRQHandler() { while (1) { } }
 void EXTI0_1_IRQHandler() { while (1) { } }
 void EXTI2_3_IRQHandler() { while (1) { } }
 void EXTI4_15_IRQHandler() { while (1) { } }
-void DMA1_Channel1_IRQHandler() { while (1) { } }
+void DMA1_Channel1_IRQHandler() {
+  HAL_DMA_IRQHandler(&dma1_ch1);
+  HAL_SPI_IRQHandler(&spi2);
+  if (spi2.ErrorCode == 0) {
+    HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 2);
+  } else {
+    swv_printf("SPI error %d\n", (int)spi2.ErrorCode);
+    while (1) {
+      HAL_GPIO_WritePin(GPIOF, GPIO_PIN_1, 0); HAL_Delay(100);
+      HAL_GPIO_WritePin(GPIOF, GPIO_PIN_1, 1); HAL_Delay(100);
+    }
+  }
+}
 void DMA1_Channel2_3_IRQHandler() { while (1) { } }
 void DMA1_Ch4_5_DMAMUX1_OVR_IRQHandler() { while (1) { } }
 void ADC1_IRQHandler() { while (1) { } }
