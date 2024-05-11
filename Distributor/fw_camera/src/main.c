@@ -95,6 +95,18 @@ int main()
   HAL_GPIO_Init(GPIOA, &gpio_init);
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0 | GPIO_PIN_1, 1);
 
+  // GPIO initialisation is done by `HAL_RCC_MCOConfig`
+/*
+  gpio_init.Pin = GPIO_PIN_8;
+  gpio_init.Mode = GPIO_MODE_AF_PP;
+  gpio_init.Alternate = GPIO_AF0_MCO;
+  gpio_init.Pull = GPIO_NOPULL;
+  gpio_init.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(GPIOA, &gpio_init);
+*/
+  // 64 MHz / 2 = 32 MHz
+  HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_SYSCLK, RCC_MCODIV_2);
+
   while (1) {
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); HAL_Delay(500);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1); HAL_Delay(500);

@@ -152,6 +152,7 @@ int main()
   int count = 0;
   while (1) {
     __disable_irq();
+    // __set_BASEPRI(1 << 4);
     run();
     __enable_irq();
     // HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 0); HAL_Delay(499);
