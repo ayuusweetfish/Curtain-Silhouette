@@ -44,6 +44,8 @@ static void swv_printf(const char *restrict fmt, ...)
 #define swv_printf(...)
 #endif
 
+SPI_HandleTypeDef spi2;
+
 int main()
 {
   HAL_Init();
@@ -88,6 +90,34 @@ int main()
 
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 
+  // ======== SPI2 (PB9 CS, PB8 SCK, PB7 MOSI) ========
+  gpio_init.Pin = GPIO_PIN_7 | GPIO_PIN_8;
+  gpio_init.Mode = GPIO_MODE_AF_PP;
+  gpio_init.Alternate = GPIO_AF1_SPI2;
+  gpio_init.Pull = GPIO_NOPULL;
+  gpio_init.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(GPIOA, &gpio_init);
+
+  __HAL_RCC_SPI2_CLK_ENABLE();
+  spi2 = (SPI_HandleTypeDef){
+    .Instance = SPI2,
+    .Init = (SPI_InitTypeDef){
+      .Mode = SPI_MODE_MASTER,
+      .Direction = SPI_DIRECTION_1LINE,
+      .DataSize = SPI_DATASIZE_8BIT,
+      .CLKPolarity = SPI_POLARITY_LOW,  // CPOL = 0
+      .CLKPhase = SPI_PHASE_1EDGE,      // CPHA = 0
+      .NSS = SPI_NSS_SOFT,
+      .BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4,
+      .FirstBit = SPI_FIRSTBIT_MSB,
+      .TIMode = SPI_TIMODE_DISABLE,
+      .CRCCalculation = SPI_CRCCALCULATION_DISABLE,
+      .NSSPMode = SPI_NSS_PULSE_DISABLE,
+    },
+  };
+  HAL_SPI_Init(&spi2);
+
+  // Act LEDs
   gpio_init.Pull = GPIO_NOPULL;
   gpio_init.Speed = GPIO_SPEED_FREQ_HIGH;
   gpio_init.Pin = GPIO_PIN_0 | GPIO_PIN_1;
@@ -107,11 +137,18 @@ int main()
   // 64 MHz / 2 = 32 MHz
   HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_SYSCLK, RCC_MCODIV_2);
 
+  uint8_t data[2] = {0, 1};
+
   while (1) {
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); HAL_Delay(500);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1); HAL_Delay(500);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0); HAL_Delay(500);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1); HAL_Delay(500);
+
+    data[0] += 1;
+    data[1] = data[1] * 5 + 1;
+    int result = HAL_SPI_Transmit(&spi2, data, 2, 1000);
+    swv_printf("SPI tx result = %d\n", result);
   }
 }
 
