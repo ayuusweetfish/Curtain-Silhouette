@@ -96,14 +96,21 @@ int main()
   gpio_init.Alternate = GPIO_AF1_SPI2;
   gpio_init.Pull = GPIO_NOPULL;
   gpio_init.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  HAL_GPIO_Init(GPIOA, &gpio_init);
+  HAL_GPIO_Init(GPIOB, &gpio_init);
+
+  gpio_init.Pin = GPIO_PIN_9;
+  gpio_init.Mode = GPIO_MODE_OUTPUT_PP;
+  gpio_init.Pull = GPIO_NOPULL;
+  gpio_init.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(GPIOB, &gpio_init);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 1);
 
   __HAL_RCC_SPI2_CLK_ENABLE();
   spi2 = (SPI_HandleTypeDef){
     .Instance = SPI2,
     .Init = (SPI_InitTypeDef){
       .Mode = SPI_MODE_MASTER,
-      .Direction = SPI_DIRECTION_1LINE,
+      .Direction = SPI_DIRECTION_2LINES,
       .DataSize = SPI_DATASIZE_8BIT,
       .CLKPolarity = SPI_POLARITY_LOW,  // CPOL = 0
       .CLKPhase = SPI_PHASE_1EDGE,      // CPHA = 0
@@ -142,12 +149,14 @@ int main()
   while (1) {
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); HAL_Delay(500);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1); HAL_Delay(500);
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0); HAL_Delay(500);
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1); HAL_Delay(500);
+    // HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0); HAL_Delay(500);
+    // HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1); HAL_Delay(500);
 
     data[0] += 1;
     data[1] = data[1] * 5 + 1;
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 0);
     int result = HAL_SPI_Transmit(&spi2, data, 2, 1000);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 1);
     swv_printf("SPI tx result = %d\n", result);
   }
 }

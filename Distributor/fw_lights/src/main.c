@@ -46,6 +46,7 @@ static void swv_printf(const char *restrict fmt, ...)
 #endif
 
 TIM_HandleTypeDef tim3;
+SPI_HandleTypeDef spi2;
 
 volatile uint16_t out_buf[48];
 volatile int out_buf_ptr = 0, out_buf_sub = 0;
@@ -140,6 +141,43 @@ int main()
   HAL_TIM_Base_Start_IT(&tim3);
   // HAL_NVIC_SetPriority(TIM3_IRQn, 1, 0);
   // HAL_NVIC_EnableIRQ(TIM3_IRQn);
+
+  // ======== SPI2 (PB9 CS, PB8 SCK, PB7 MOSI) ========
+  gpio_init.Pin = GPIO_PIN_7 | GPIO_PIN_8;
+  gpio_init.Mode = GPIO_MODE_AF_PP;
+  gpio_init.Alternate = GPIO_AF1_SPI2;
+  gpio_init.Pull = GPIO_NOPULL;
+  gpio_init.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(GPIOB, &gpio_init);
+
+  gpio_init.Pin = GPIO_PIN_9;
+  gpio_init.Alternate = GPIO_AF5_SPI2;
+  HAL_GPIO_Init(GPIOB, &gpio_init);
+
+  __HAL_RCC_SPI2_CLK_ENABLE();
+  spi2 = (SPI_HandleTypeDef){
+    .Instance = SPI2,
+    .Init = (SPI_InitTypeDef){
+      .Mode = SPI_MODE_SLAVE,
+      .Direction = SPI_DIRECTION_2LINES,
+      .DataSize = SPI_DATASIZE_8BIT,
+      .CLKPolarity = SPI_POLARITY_LOW,  // CPOL = 0
+      .CLKPhase = SPI_PHASE_1EDGE,      // CPHA = 0
+      .NSS = SPI_NSS_HARD_INPUT,
+      .BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4,
+      .FirstBit = SPI_FIRSTBIT_MSB,
+      .TIMode = SPI_TIMODE_DISABLE,
+      .CRCCalculation = SPI_CRCCALCULATION_DISABLE,
+      .NSSPMode = SPI_NSS_PULSE_DISABLE,
+    },
+  };
+  HAL_SPI_Init(&spi2);
+
+  while (1) {
+    uint8_t data[2];
+    int result = HAL_SPI_Receive(&spi2, data, 2, 2000);
+    swv_printf("SPI rx result = %d, data = %02x %02x\n", result, (int)data[0], (int)data[1]);
+  }
 
   inline uint32_t my_rand() {
     uint32_t seed = 2451023;
