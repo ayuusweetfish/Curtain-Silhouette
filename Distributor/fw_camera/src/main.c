@@ -182,7 +182,7 @@ int main()
 
   // Interrupt
   HAL_NVIC_SetPriority(EXTI4_15_IRQn, 1, 0);
-  // HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
+  HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
 
   // ======== GPIO (Camera) ========
   // PA2 CAM_HREF
@@ -253,13 +253,13 @@ int main()
   uint8_t scaling_pclk_div = 0b00000100;
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x73, I2C_MEMADD_SIZE_8BIT, &scaling_pclk_div, 1, 1000);
 */
-  uint8_t clkrc = 0b10000111;
+  uint8_t clkrc = 0b10000011; // Prescale by 4
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x11, I2C_MEMADD_SIZE_8BIT, &clkrc, 1, 1000);
   swv_printf("err %d\n", i2c2.ErrorCode);
 
   uint32_t t0 = HAL_GetTick();
   uint32_t count = 0;
-  while (1) {
+  while (0) {
 #if 0
 #define CLK_PORT GPIOA
 #define CLK_PIN  GPIO_PIN_2
@@ -275,7 +275,7 @@ int main()
       count++;
     }
     swv_printf(CLK_NAME " rate %u\n", count);
-    // Before division (by 8):
+    // Before division (by CLKRC):
     // HREF rate 9604 (16 MHz / 784 * (480 / 510) / 2 due to RGB565)
     // PCLK rate 8000000 (16 MHz / 2 due to RGB565)
     t0 += 1000;
@@ -290,7 +290,7 @@ int main()
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); while (HAL_GetTick() - last_tick < 500) { }
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1); while (HAL_GetTick() - last_tick < 1000) { }
     last_tick += 1000;
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, !(frame_count > 15));
+    // HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, !(frame_count > 15));
 
     if (frame_count < 20)
       swv_printf("frame count = %u\n", frame_count);
@@ -332,13 +332,12 @@ void EXTI4_15_IRQHandler() {
     // Wait HREF rise
     while ((GPIOA->IDR & GPIO_PIN_2) == 0) { }
 
-    while (1) {
-      // while ((GPIOB->IDR & GPIO_PIN_15) == 0) { }
-      // while ((GPIOB->IDR & GPIO_PIN_15) != 0) { }
+    while (0) {
+      while ((GPIOB->IDR & GPIO_PIN_15) == 0) { }
+      while ((GPIOB->IDR & GPIO_PIN_15) != 0) { }
       if ((GPIOA->IDR & GPIO_PIN_2) == 0) break;
     }
 
-  /*
     for (int col = 0; col < 640; col++) {
       // Wait PCLK rise
       uint32_t byte;
@@ -351,13 +350,15 @@ void EXTI4_15_IRQHandler() {
       // Wait PCLK fall
       while ((GPIOB->IDR & GPIO_PIN_15) != 0) { }
     }
-  */
 
     // Wait HREF fall
     while ((GPIOA->IDR & GPIO_PIN_2) != 0) { }
   }
 
   frame_count++;
+
+  static int parity = 0;
+  GPIOA->BSRR = 1 << (((parity ^= 1) & 1) ? 1 : 17);
 
   // Clear at the end, in case of startup midway of a frame
   __HAL_GPIO_EXTI_CLEAR_FALLING_IT(GPIO_PIN_9);
