@@ -200,11 +200,9 @@ int main()
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
   HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 2);
-  while (1) {
+  while (0) {
     swv_printf("data %02x %02x\n", (int)spi_rx_buf[0], (int)spi_rx_buf[1]);
     HAL_Delay(400);
-    // Data (transmitted every second) changes every 1~2 prints
-    // due to time spent in debugger transmission
   }
 
   inline uint32_t my_rand() {
@@ -247,6 +245,8 @@ int main()
       ((uint8_t)(0x11 * rate3 + 0x33 * rate4) << 16) |
       ((uint8_t)(0x44 * rate3 + 0x00 * rate4) <<  8) |
       ((uint8_t)(0x00 * rate3 + 0x11 * rate4) <<  0);
+    colours[0] = ((uint8_t)(spi_rx_buf[0] >> 2) << 16) | 0;
+    colours[1] = ((uint8_t)(spi_rx_buf[1] >> 1) <<  8) | 0;
     if (1) for (int i = 0; i < 2; i++) {
       for (int j = 0; j < 24; j++) {
         int bit = (colours[i] >> (23 - j)) & 1;

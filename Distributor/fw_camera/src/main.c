@@ -184,7 +184,6 @@ int main()
 
   // Interrupt
   HAL_NVIC_SetPriority(EXTI4_15_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
 
   // ======== GPIO (Camera) ========
   // PA2 CAM_HREF
@@ -259,8 +258,10 @@ int main()
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x11, I2C_MEMADD_SIZE_8BIT, &clkrc, 1, 1000);
   uint8_t test_pattern_x = 0b10111010;
   uint8_t test_pattern_y = 0b00110101;  // 8-bar color bar
+/*
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x70, I2C_MEMADD_SIZE_8BIT, &test_pattern_x, 1, 1000);
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x71, I2C_MEMADD_SIZE_8BIT, &test_pattern_y, 1, 1000);
+*/
   swv_printf("err %d\n", i2c2.ErrorCode);
 
   uint32_t t0 = HAL_GetTick();
@@ -288,6 +289,8 @@ int main()
     count = 0;
   }
 
+  HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
+
   uint8_t data[2] = {0, 1};
 
   uint32_t last_tick = HAL_GetTick();
@@ -305,6 +308,11 @@ int main()
       HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, !(frame_errors > 0));
       frame_count = 0;
       frame_errors = 0;
+
+      data[0] = frame_sum / (640 * 480);
+      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 0);
+      HAL_SPI_Transmit(&spi2, data, 2, 1000);
+      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 1);
     }
 
 /*
