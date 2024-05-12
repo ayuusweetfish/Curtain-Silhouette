@@ -182,7 +182,7 @@ int main()
 
   // Interrupt
   HAL_NVIC_SetPriority(EXTI4_15_IRQn, 1, 0);
-  HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
+  // HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
 
   // ======== GPIO (Camera) ========
   // PA2 CAM_HREF
@@ -238,16 +238,49 @@ int main()
   swv_printf("result %d, err %d, manufacturer id %02x %02x\n",
     result, i2c2.ErrorCode, (int)mfid[0], (int)mfid[1]);
 */
-  // uint8_t com14 = 0b10100;
-  // int result = HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x3e, I2C_MEMADD_SIZE_8BIT, &com14, 1, 1000);
-  // swv_printf("result %d\n", result);
+
+/*
   uint8_t com3  = 0b00001000; // Scale enable
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x0c, I2C_MEMADD_SIZE_8BIT, &com3, 1, 1000);
   uint8_t com7  = 0b00010100; // QVGA, RGB
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x12, I2C_MEMADD_SIZE_8BIT, &com7, 1, 1000);
   uint8_t com15 = 0b11010000; // RGB 565
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x40, I2C_MEMADD_SIZE_8BIT, &com15, 1, 1000);
+*/
+/*
+  uint8_t com14 = 0b00010100; // PCLK divier
+  HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x3e, I2C_MEMADD_SIZE_8BIT, &com14, 1, 1000);
+  uint8_t scaling_pclk_div = 0b00000100;
+  HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x73, I2C_MEMADD_SIZE_8BIT, &scaling_pclk_div, 1, 1000);
+*/
+  uint8_t clkrc = 0b10000111;
+  HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x11, I2C_MEMADD_SIZE_8BIT, &clkrc, 1, 1000);
   swv_printf("err %d\n", i2c2.ErrorCode);
+
+  uint32_t t0 = HAL_GetTick();
+  uint32_t count = 0;
+  while (1) {
+#if 0
+#define CLK_PORT GPIOA
+#define CLK_PIN  GPIO_PIN_2
+#define CLK_NAME "HREF"
+#else
+#define CLK_PORT GPIOB
+#define CLK_PIN  GPIO_PIN_15
+#define CLK_NAME "PCLK"
+#endif
+    while (HAL_GetTick() - t0 < 1000) {
+      while ((CLK_PORT->IDR & CLK_PIN) == 0) { }
+      while ((CLK_PORT->IDR & CLK_PIN) != 0) { }
+      count++;
+    }
+    swv_printf(CLK_NAME " rate %u\n", count);
+    // Before division (by 8):
+    // HREF rate 9604 (16 MHz / 784 * (480 / 510) / 2 due to RGB565)
+    // PCLK rate 8000000 (16 MHz / 2 due to RGB565)
+    t0 += 1000;
+    count = 0;
+  }
 
   uint8_t data[2] = {0, 1};
 
@@ -259,15 +292,18 @@ int main()
     last_tick += 1000;
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, !(frame_count > 15));
 
-    swv_printf("frame count = %u\n", frame_count);
+    if (frame_count < 20)
+      swv_printf("frame count = %u\n", frame_count);
     frame_count = 0;
 
+/*
     data[0] += 1;
     data[1] = data[1] * 5 + 1;
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 0);
     int result = HAL_SPI_Transmit(&spi2, data, 2, 1000);
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 1);
     swv_printf("SPI tx result = %d\n", result);
+*/
   }
 }
 
@@ -287,7 +323,7 @@ void FLASH_IRQHandler() { while (1) { } }
 void RCC_IRQHandler() { while (1) { } }
 void EXTI0_1_IRQHandler() { while (1) { } }
 void EXTI2_3_IRQHandler() { while (1) { } }
-// #pragma GCC optimize("O3")
+#pragma GCC optimize("O3")
 void EXTI4_15_IRQHandler() {
   uint32_t sum = 0;
 
@@ -295,6 +331,12 @@ void EXTI4_15_IRQHandler() {
   for (int row = 0; row < 480; row++) {
     // Wait HREF rise
     while ((GPIOA->IDR & GPIO_PIN_2) == 0) { }
+
+    while (1) {
+      // while ((GPIOB->IDR & GPIO_PIN_15) == 0) { }
+      // while ((GPIOB->IDR & GPIO_PIN_15) != 0) { }
+      if ((GPIOA->IDR & GPIO_PIN_2) == 0) break;
+    }
 
   /*
     for (int col = 0; col < 640; col++) {
