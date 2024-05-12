@@ -255,7 +255,7 @@ int main()
   uint8_t scaling_pclk_div = 0b00000100;
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x73, I2C_MEMADD_SIZE_8BIT, &scaling_pclk_div, 1, 1000);
 */
-  uint8_t clkrc = 0b10000111; // Prescale by 8
+  uint8_t clkrc = 0b10000011; // Prescale by 4
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x11, I2C_MEMADD_SIZE_8BIT, &clkrc, 1, 1000);
   uint8_t test_pattern_x = 0b10111010;
   uint8_t test_pattern_y = 0b00110101;  // 8-bar color bar
@@ -338,29 +338,27 @@ void EXTI2_3_IRQHandler() { while (1) { } }
 void EXTI4_15_IRQHandler() {
   uint32_t sum = 0;
 
-// if (0)
   for (int row = 0; row < 480; row++) {
     // Wait HREF rise
     while ((GPIOA->IDR & GPIO_PIN_2) == 0) { }
 
+    // Default format is YCbCr
+    // Ref: http://embeddedprogrammer.blogspot.com/2012/07/hacking-ov7670-camera-module-sccb-cheat.html
     for (int col = 0; col < 640; col++) {
       // Wait PCLK rise
       uint32_t byte1;
       while (((byte1 = GPIOB->IDR) & GPIO_PIN_15) == 0) { }
-      byte1 = ((byte1 >> 7) & 0xf8) | (byte1 & 0x07);
+      // byte1 = ((byte1 >> 7) & 0xf8) | (byte1 & 0x07);
       // Wait PCLK fall
       while ((GPIOB->IDR & GPIO_PIN_15) != 0) { }
       // Wait PCLK rise
       uint32_t byte2;
       while (((byte2 = GPIOB->IDR) & GPIO_PIN_15) == 0) { }
-      byte2 = ((byte2 << 1) & 0xf800) | ((byte2 << 8) & 0x0700);
+      byte2 = ((byte2 >> 7) & 0xf8) | (byte2 & 0x07);
       // Wait PCLK fall
       while ((GPIOB->IDR & GPIO_PIN_15) != 0) { }
 
-      uint32_t r = (byte1 >> 11) & 0x1f;
-      uint32_t g = (byte1 >>  5) & 0x3f;
-      uint32_t b = (byte1 >>  0) & 0x1f;
-      sum += (r + (g >> 1) + b);
+      sum += byte2;
     }
 
     // Wait HREF fall
@@ -369,7 +367,7 @@ void EXTI4_15_IRQHandler() {
 
   frame_count++;
   frame_sum = sum;
-  if (sum != 2112000) frame_errors++;
+  if (sum != 10598400) frame_errors++;
 
   static int parity = 0;
   GPIOA->BSRR = 1 << (((parity ^= 1) & 1) ? 1 : 17);
