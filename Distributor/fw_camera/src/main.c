@@ -45,6 +45,7 @@ static void swv_printf(const char *restrict fmt, ...)
 #endif
 
 SPI_HandleTypeDef spi2;
+I2C_HandleTypeDef i2c2;
 
 uint32_t frame_count = 0;
 
@@ -206,6 +207,48 @@ int main()
   HAL_Delay(10);
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, 1);  // XXX: Does this actually work??
 
+  // ======== I2C2 (PA11 SCL, PA12 SDA) ========
+  gpio_init = (GPIO_InitTypeDef){
+    .Pin = GPIO_PIN_11 | GPIO_PIN_12,
+    .Mode = GPIO_MODE_AF_PP,
+    .Alternate = GPIO_AF6_I2C2,
+    .Speed = GPIO_SPEED_FREQ_HIGH,
+  };
+  HAL_GPIO_Init(GPIOA, &gpio_init);
+
+  __HAL_RCC_I2C2_CLK_ENABLE();
+  i2c2 = (I2C_HandleTypeDef){
+    .Instance = I2C2,
+    .Init = {
+      // RM0454 Rev 5, pp. 711, 726, 738 (examples), 766
+      // APB = 64 MHz
+      // PRESC = 7 (1 / (64 MHz / (7+1)) = 0.125 us)
+      // SCLDEL = 1, SDADEL = 1
+      // SCLH = 39, SCLL = 39 -> f_SCL = 1 / (80 * t_PRESC) = 100 kHz
+      .Timing = 0x70112727,
+      .OwnAddress1 = 0x00,
+      .AddressingMode = I2C_ADDRESSINGMODE_7BIT,
+    },
+  };
+  HAL_I2C_Init(&i2c2);
+
+/*
+  uint8_t mfid[2] = {0, 0};
+  int result = HAL_I2C_Mem_Read(&i2c2, 0x15 << 1, 0x1c, I2C_MEMADD_SIZE_8BIT, mfid, 1, 1000);
+  swv_printf("result %d, err %d, manufacturer id %02x %02x\n",
+    result, i2c2.ErrorCode, (int)mfid[0], (int)mfid[1]);
+*/
+  // uint8_t com14 = 0b10100;
+  // int result = HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x3e, I2C_MEMADD_SIZE_8BIT, &com14, 1, 1000);
+  // swv_printf("result %d\n", result);
+  uint8_t com3  = 0b00001000; // Scale enable
+  HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x0c, I2C_MEMADD_SIZE_8BIT, &com3, 1, 1000);
+  uint8_t com7  = 0b00010100; // QVGA, RGB
+  HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x12, I2C_MEMADD_SIZE_8BIT, &com7, 1, 1000);
+  uint8_t com15 = 0b11010000; // RGB 565
+  HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x40, I2C_MEMADD_SIZE_8BIT, &com15, 1, 1000);
+  swv_printf("err %d\n", i2c2.ErrorCode);
+
   uint8_t data[2] = {0, 1};
 
   uint32_t last_tick = HAL_GetTick();
@@ -248,6 +291,7 @@ void EXTI2_3_IRQHandler() { while (1) { } }
 void EXTI4_15_IRQHandler() {
   uint32_t sum = 0;
 
+// if (0)
   for (int row = 0; row < 480; row++) {
     // Wait HREF rise
     while ((GPIOA->IDR & GPIO_PIN_2) == 0) { }
