@@ -49,7 +49,7 @@ TIM_HandleTypeDef tim3;
 SPI_HandleTypeDef spi2;
 DMA_HandleTypeDef dma1_ch1;
 
-uint8_t spi_rx_buf[2];
+uint8_t spi_rx_buf[2] = {0, 0};
 
 volatile uint16_t out_buf[48];
 volatile int out_buf_ptr = 0, out_buf_sub = 0;
@@ -238,15 +238,15 @@ int main()
     // colours[0] = ((uint8_t)(0x11 * rate1) << 16) | ((uint8_t)(0x44 * rate1) << 8) | (uint8_t)(0x00 * rate1);
     // colours[1] = ((uint8_t)(0x33 * rate2) << 16) | ((uint8_t)(0x00 * rate2) << 8) | (uint8_t)(0x11 * rate2);
     colours[0] =
-      ((uint8_t)(0x11 * rate1 + 0x33 * rate2) << 16) |
-      ((uint8_t)(0x44 * rate1 + 0x00 * rate2) <<  8) |
-      ((uint8_t)(0x00 * rate1 + 0x11 * rate2) <<  0);
+      ((uint32_t)(0x11 * rate1 + 0x33 * rate2) << 16) |
+      ((uint32_t)(0x44 * rate1 + 0x00 * rate2) <<  8) |
+      ((uint32_t)(0x00 * rate1 + 0x11 * rate2) <<  0);
     colours[1] =
-      ((uint8_t)(0x11 * rate3 + 0x33 * rate4) << 16) |
-      ((uint8_t)(0x44 * rate3 + 0x00 * rate4) <<  8) |
-      ((uint8_t)(0x00 * rate3 + 0x11 * rate4) <<  0);
-    colours[0] = ((uint8_t)(spi_rx_buf[0] >> 2) << 16) | 0;
-    colours[1] = ((uint8_t)(spi_rx_buf[1] >> 1) <<  8) | 0;
+      ((uint32_t)(0x11 * rate3 + 0x33 * rate4) << 16) |
+      ((uint32_t)(0x44 * rate3 + 0x00 * rate4) <<  8) |
+      ((uint32_t)(0x00 * rate3 + 0x11 * rate4) <<  0);
+    colours[0] = ((uint32_t)(spi_rx_buf[0] >> 2) << 16) | 0;
+    colours[1] = ((uint32_t)(spi_rx_buf[1] >> 2) <<  8) | 0;
     if (1) for (int i = 0; i < 2; i++) {
       for (int j = 0; j < 24; j++) {
         int bit = (colours[i] >> (23 - j)) & 1;

@@ -48,7 +48,7 @@ SPI_HandleTypeDef spi2;
 I2C_HandleTypeDef i2c2;
 
 uint32_t frame_count = 0;
-uint32_t frame_sum = 0;
+uint32_t frame_sum = 0, frame_sum2 = 0;
 uint32_t frame_errors = 0;
 
 int main()
@@ -254,7 +254,7 @@ int main()
   uint8_t scaling_pclk_div = 0b00000100;
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x73, I2C_MEMADD_SIZE_8BIT, &scaling_pclk_div, 1, 1000);
 */
-  uint8_t clkrc = 0b10000011; // Prescale by 4
+  uint8_t clkrc = 0b10000111; // Prescale by 8
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x11, I2C_MEMADD_SIZE_8BIT, &clkrc, 1, 1000);
   uint8_t test_pattern_x = 0b10111010;
   uint8_t test_pattern_y = 0b00110101;  // 8-bar color bar
@@ -304,12 +304,13 @@ int main()
     // HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, !(frame_count > 15));
 
     if (frame_count > 0) {
-      swv_printf("frame count = %u, sum = %u, errors = %u\n", frame_count, frame_sum, frame_errors);
+      swv_printf("frame count = %u, sum = %u %u, errors = %u\n", frame_count, frame_sum, frame_sum2, frame_errors);
       HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, !(frame_errors > 0));
       frame_count = 0;
       frame_errors = 0;
 
       data[0] = frame_sum / (640 * 480);
+      data[1] = frame_sum2 / (640 * 480);
       HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 0);
       HAL_SPI_Transmit(&spi2, data, 2, 1000);
       HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 1);
@@ -344,7 +345,7 @@ void EXTI0_1_IRQHandler() { while (1) { } }
 void EXTI2_3_IRQHandler() { while (1) { } }
 #pragma GCC optimize("O3")
 void EXTI4_15_IRQHandler() {
-  uint32_t sum = 0;
+  uint32_t sum1 = 0, sum2 = 0;
 
   for (int row = 0; row < 480; row++) {
     // Wait HREF rise
@@ -366,7 +367,8 @@ void EXTI4_15_IRQHandler() {
       // Wait PCLK fall
       while ((GPIOB->IDR & GPIO_PIN_15) != 0) { }
 
-      sum += byte2;
+      if (col < 320) sum1 += byte2;
+      else sum2 += byte2;
     }
 
     // Wait HREF fall
@@ -374,8 +376,9 @@ void EXTI4_15_IRQHandler() {
   }
 
   frame_count++;
-  frame_sum = sum;
-  if (sum != 10598400) frame_errors++;
+  frame_sum = sum1;
+  frame_sum2 = sum2;
+  // if (sum1 != 10598400) frame_errors++;
 
   static int parity = 0;
   GPIOA->BSRR = 1 << (((parity ^= 1) & 1) ? 1 : 17);
