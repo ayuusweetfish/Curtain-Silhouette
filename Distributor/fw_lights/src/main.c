@@ -211,6 +211,8 @@ int main()
     return seed & 0x7fffffff;
   }
 
+  float colour_values[2] = {0, 0};
+
 // #define GPIOx GPIOF
 #define GPIOx GPIOA
   int count = 0;
@@ -245,8 +247,10 @@ int main()
       ((uint32_t)(0x11 * rate3 + 0x33 * rate4) << 16) |
       ((uint32_t)(0x44 * rate3 + 0x00 * rate4) <<  8) |
       ((uint32_t)(0x00 * rate3 + 0x11 * rate4) <<  0);
-    colours[0] = ((uint32_t)(spi_rx_buf[0] >> 2) << 16) | 0;
-    colours[1] = ((uint32_t)(spi_rx_buf[1] >> 2) <<  8) | 0;
+    colour_values[0] += ((float)spi_rx_buf[0] - colour_values[0]) / 10;
+    colour_values[1] += ((float)spi_rx_buf[1] - colour_values[1]) / 10;
+    colours[0] = ((uint32_t)(colour_values[0] / 4) << 16) | 0;
+    colours[1] = ((uint32_t)(colour_values[1] / 4) <<  8) | 0;
     if (1) for (int i = 0; i < 2; i++) {
       for (int j = 0; j < 24; j++) {
         int bit = (colours[i] >> (23 - j)) & 1;
