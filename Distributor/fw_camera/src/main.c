@@ -49,7 +49,7 @@ I2C_HandleTypeDef i2c2;
 
 uint32_t frame_count = 0;
 uint32_t frame_sum = 0;
-uint32_t frame_bins[1281];
+uint32_t frame_errors = 0;
 
 int main()
 {
@@ -93,7 +93,7 @@ int main()
   clk_init.APB1CLKDivider = RCC_HCLK_DIV1;
   HAL_RCC_ClockConfig(&clk_init, FLASH_LATENCY_2);
 
-  HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(SysTick_IRQn, 1, 0);
 
   // ======== SPI2 (PB9 CS, PB8 SCK, PB7 MOSI) ========
   gpio_init.Pin = GPIO_PIN_7 | GPIO_PIN_8;
@@ -183,7 +183,7 @@ int main()
   HAL_EXTI_SetConfigLine(&exti_l9, &exti_cfg_l9);
 
   // Interrupt
-  HAL_NVIC_SetPriority(EXTI4_15_IRQn, 1, 0);
+  HAL_NVIC_SetPriority(EXTI4_15_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
 
   // ======== GPIO (Camera) ========
@@ -255,8 +255,12 @@ int main()
   uint8_t scaling_pclk_div = 0b00000100;
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x73, I2C_MEMADD_SIZE_8BIT, &scaling_pclk_div, 1, 1000);
 */
-  uint8_t clkrc = 0b10001111; // Prescale by 16
+  uint8_t clkrc = 0b10000111; // Prescale by 16
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x11, I2C_MEMADD_SIZE_8BIT, &clkrc, 1, 1000);
+  uint8_t test_pattern_x = 0b10111010;
+  uint8_t test_pattern_y = 0b00110101;  // 8-bar color bar
+  HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x70, I2C_MEMADD_SIZE_8BIT, &test_pattern_x, 1, 1000);
+  HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x71, I2C_MEMADD_SIZE_8BIT, &test_pattern_y, 1, 1000);
   swv_printf("err %d\n", i2c2.ErrorCode);
 
   uint32_t t0 = HAL_GetTick();
@@ -289,44 +293,19 @@ int main()
   uint32_t last_tick = HAL_GetTick();
 
   while (1) {
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); while (HAL_GetTick() - last_tick < 500) { }
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1); while (HAL_GetTick() - last_tick < 1000) { }
-    last_tick += 1000;
+  /*
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); while (HAL_GetTick() - last_tick < 50) { }
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1); while (HAL_GetTick() - last_tick < 100) { }
+    last_tick += 100;
+  */
     // HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, !(frame_count > 15));
 
-/*
-frame count = 1, sum = 0, bin[...1280] = 0 0 0 134 346 0
-frame count = 0, sum = 0, bin[...1280] = 0 0 0 135 344 0
-frame count = 1, sum = 0, bin[...1280] = 0 0 0 134 346 0
-frame count = 0, sum = 0, bin[...1280] = 0 0 0 135 345 0
-frame count = 1, sum = 0, bin[...1280] = 0 0 0 134 346 0
-frame count = 0, sum = 1754, bin[...1280] = 0 0 0 133 342 0
-frame count = 1, sum = 0, bin[...1280] = 0 0 0 135 345 0
-frame count = 0, sum = 2024, bin[...1280] = 0 0 0 133 342 0
-frame count = 0, sum = 2024, bin[...1280] = 0 0 0 133 342 0
-frame count = 1, sum = 0, bin[...1280] = 0 0 0 135 345 0
-frame count = 0, sum = 472, bin[...1280] = 0 0 0 134 343 0
-frame count = 1, sum = 0, bin[...1280] = 0 0 0 135 345 0
-frame count = 0, sum = 260, bin[...1280] = 0 0 0 133 345 0
-frame count = 0, sum = 260, bin[...1280] = 0 0 0 133 345 0
-frame count = 2, sum = 0, bin[...1280] = 0 0 0 134 346 0
-frame count = 0, sum = 465, bin[...1280] = 0 0 0 134 343 0
-frame count = 1, sum = 0, bin[...1280] = 0 0 0 134 346 0
-frame count = 0, sum = 635, bin[...1280] = 0 0 0 133 344 0
-frame count = 0, sum = 635, bin[...1280] = 0 0 0 133 344 0
-frame count = 2, sum = 0, bin[...1280] = 0 0 0 135 345 0
-frame count = 0, sum = 0, bin[...1280] = 0 0 0 134 346 0
-frame count = 1, sum = 0, bin[...1280] = 0 0 0 134 346 0
-*/
-    swv_printf("frame count = %u, sum = %u, bin[...1280] = %u %u %u %u %u %u\n",
-      frame_count, frame_sum,
-      frame_bins[1275],
-      frame_bins[1276],
-      frame_bins[1277],
-      frame_bins[1278],
-      frame_bins[1279],
-      frame_bins[1280]);
-    frame_count = 0;
+    if (frame_count > 0) {
+      swv_printf("frame count = %u, sum = %u, errors = %u\n", frame_count, frame_sum, frame_errors);
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, !(frame_errors > 0));
+      frame_count = 0;
+      frame_errors = 0;
+    }
 
 /*
     data[0] += 1;
@@ -359,59 +338,39 @@ void EXTI2_3_IRQHandler() { while (1) { } }
 void EXTI4_15_IRQHandler() {
   uint32_t sum = 0;
 
-  for (int i = 0; i <= 1280; i++) frame_bins[i] = 0;
-
 // if (0)
   for (int row = 0; row < 480; row++) {
     // Wait HREF rise
     while ((GPIOA->IDR & GPIO_PIN_2) == 0) { }
 
-    int count = 0;
-    bool broken = false;
-
-    // while (1) {
-    for (int col = 0; col < 1280; col++) {
-      // Wait PCLK rise
-      uint32_t byte;
-      while (((byte = GPIOB->IDR) & GPIO_PIN_15) == 0) { }
-
-      // Is HREF falling?
-      // if ((GPIOA->IDR & GPIO_PIN_2) == 0) break;
-
-      if ((GPIOA->IDR & GPIO_PIN_2) != 0) {
-        count += 1;
-        if (broken) sum += 1;
-      } else {
-        broken = true;
-      }
-
-      // Wait PCLK fall
-      while ((GPIOB->IDR & GPIO_PIN_15) != 0) { }
-    }
-
-    frame_bins[count]++;
-
-  /*
     for (int col = 0; col < 640; col++) {
       // Wait PCLK rise
-      uint32_t byte;
-      while (((byte = GPIOB->IDR) & GPIO_PIN_15) == 0) { }
-
-      // Read data
-      byte = ((byte >> 7) & 0xf8) | (byte & 0x07);
-      sum += byte;
-
+      uint32_t byte1;
+      while (((byte1 = GPIOB->IDR) & GPIO_PIN_15) == 0) { }
+      byte1 = ((byte1 >> 7) & 0xf8) | (byte1 & 0x07);
       // Wait PCLK fall
       while ((GPIOB->IDR & GPIO_PIN_15) != 0) { }
+      // Wait PCLK rise
+      uint32_t byte2;
+      while (((byte2 = GPIOB->IDR) & GPIO_PIN_15) == 0) { }
+      byte2 = ((byte2 >> 7) & 0xf8) | (byte2 & 0x07);
+      // Wait PCLK fall
+      while ((GPIOB->IDR & GPIO_PIN_15) != 0) { }
+
+      uint32_t word = (byte1 << 16) | byte2;
+      uint32_t r = (word >> 11) & 0x1f;
+      uint32_t g = (word >>  5) & 0x3f;
+      uint32_t b = (word >>  0) & 0x1f;
+      sum += (r + (g >> 1) + b);
     }
 
     // Wait HREF fall
     while ((GPIOA->IDR & GPIO_PIN_2) != 0) { }
-  */
   }
 
   frame_count++;
   frame_sum = sum;
+  if (sum != 2112000) frame_errors++;
 
   static int parity = 0;
   GPIOA->BSRR = 1 << (((parity ^= 1) & 1) ? 1 : 17);
