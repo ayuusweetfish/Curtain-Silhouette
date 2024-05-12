@@ -255,7 +255,7 @@ int main()
   uint8_t scaling_pclk_div = 0b00000100;
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x73, I2C_MEMADD_SIZE_8BIT, &scaling_pclk_div, 1, 1000);
 */
-  uint8_t clkrc = 0b10000111; // Prescale by 16
+  uint8_t clkrc = 0b10000111; // Prescale by 8
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x11, I2C_MEMADD_SIZE_8BIT, &clkrc, 1, 1000);
   uint8_t test_pattern_x = 0b10111010;
   uint8_t test_pattern_y = 0b00110101;  // 8-bar color bar
@@ -353,14 +353,13 @@ void EXTI4_15_IRQHandler() {
       // Wait PCLK rise
       uint32_t byte2;
       while (((byte2 = GPIOB->IDR) & GPIO_PIN_15) == 0) { }
-      byte2 = ((byte2 >> 7) & 0xf8) | (byte2 & 0x07);
+      byte2 = ((byte2 << 1) & 0xf800) | ((byte2 << 8) & 0x0700);
       // Wait PCLK fall
       while ((GPIOB->IDR & GPIO_PIN_15) != 0) { }
 
-      uint32_t word = (byte1 << 16) | byte2;
-      uint32_t r = (word >> 11) & 0x1f;
-      uint32_t g = (word >>  5) & 0x3f;
-      uint32_t b = (word >>  0) & 0x1f;
+      uint32_t r = (byte1 >> 11) & 0x1f;
+      uint32_t g = (byte1 >>  5) & 0x3f;
+      uint32_t b = (byte1 >>  0) & 0x1f;
       sum += (r + (g >> 1) + b);
     }
 
