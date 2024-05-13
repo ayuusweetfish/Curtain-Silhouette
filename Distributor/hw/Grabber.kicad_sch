@@ -1554,9 +1554,6 @@
   (junction (at 59.69 139.065) (diameter 0) (color 0 0 0 0)
     (uuid 8fe79f9f-197a-48aa-9a37-44df2be6a1d7)
   )
-  (junction (at 223.52 32.385) (diameter 0) (color 0 0 0 0)
-    (uuid 9d4fb3d9-9958-4e01-98be-8738f1b3155d)
-  )
   (junction (at 189.23 24.765) (diameter 0) (color 0 0 0 0)
     (uuid a209050f-f88f-4d59-93dd-94ebd0e97c13)
   )
@@ -1568,9 +1565,6 @@
   )
   (junction (at 142.875 24.765) (diameter 0) (color 0 0 0 0)
     (uuid b5b57503-8759-4a4c-8c73-e4524d2cc338)
-  )
-  (junction (at 223.52 24.765) (diameter 0) (color 0 0 0 0)
-    (uuid be892813-6424-489e-886c-6cdd61625e51)
   )
   (junction (at 177.8 32.385) (diameter 0) (color 0 0 0 0)
     (uuid c7439b60-aa8e-44df-9f24-fafd9424d6a0)
@@ -1838,10 +1832,6 @@
     (stroke (width 0) (type default))
     (uuid 49c973d5-cb70-4b21-bb3d-4c04403ec39c)
   )
-  (wire (pts (xy 223.52 24.765) (xy 234.95 24.765))
-    (stroke (width 0) (type default))
-    (uuid 58dd7673-a879-4d2f-b4e1-f236047d9b47)
-  )
   (wire (pts (xy 34.29 76.2) (xy 39.37 76.2))
     (stroke (width 0) (type default))
     (uuid 59a7e5df-f819-4c26-a219-0ac93f391c27)
@@ -1897,10 +1887,6 @@
   (wire (pts (xy 55.245 115.57) (xy 51.435 115.57))
     (stroke (width 0) (type default))
     (uuid 79ebab97-eefd-4085-92aa-023e70c60b91)
-  )
-  (wire (pts (xy 223.52 32.385) (xy 234.95 32.385))
-    (stroke (width 0) (type default))
-    (uuid 7b2d2177-20a5-4842-aaa4-19a9dc21890f)
   )
   (wire (pts (xy 198.12 106.045) (xy 198.12 109.22))
     (stroke (width 0) (type default))
@@ -2143,7 +2129,7 @@
     (effects (font (size 1.27 1.27) italic) (justify left bottom))
     (uuid a6797001-384b-43b1-8e7e-0e0bb7f3ca9a)
   )
-  (text "Decp. VREF/VDDA-VSSA" (at 226.06 35.56 0)
+  (text "Decp. VREF/VDDA-VSSA" (at 214.63 35.56 0)
     (effects (font (size 1.27 1.27) italic) (justify left bottom))
     (uuid b9f86557-af99-4c48-aee8-e59bb749e4d0)
   )
@@ -2606,7 +2592,7 @@
   (symbol (lib_id "Device:C") (at 71.12 142.875 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid 3426b27f-2733-4581-8377-03e08781e5aa)
-    (property "Reference" "C25" (at 74.295 141.605 0)
+    (property "Reference" "C24" (at 74.295 141.605 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "100n" (at 74.295 144.145 0)
@@ -2623,7 +2609,7 @@
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "C25") (unit 1)
+          (reference "C24") (unit 1)
         )
       )
     )
@@ -2674,32 +2660,6 @@
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
           (reference "#PWR047") (unit 1)
-        )
-      )
-    )
-  )
-
-  (symbol (lib_id "Device:C") (at 234.95 28.575 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no)
-    (uuid 53d0ba8d-f8a4-435d-9bad-b80e634bc2b6)
-    (property "Reference" "C21" (at 238.125 27.305 0)
-      (effects (font (size 1.27 1.27)) (justify left))
-    )
-    (property "Value" "100n" (at 238.125 29.845 0)
-      (effects (font (size 1.27 1.27)) (justify left))
-    )
-    (property "Footprint" "Capacitor_SMD:C_0603_1608Metric" (at 235.9152 32.385 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (property "Datasheet" "~" (at 234.95 28.575 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (pin "1" (uuid b4b36cc9-ef88-4725-8a52-0e3419be3734))
-    (pin "2" (uuid c55b34ea-b8ac-4e73-8697-dba2c2e52e0f))
-    (instances
-      (project "Distributor"
-        (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "C21") (unit 1)
         )
       )
     )
@@ -2837,7 +2797,7 @@
   (symbol (lib_id "Device:C") (at 59.69 142.875 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid 71918976-01b8-44e0-9ab7-158719bbe4be)
-    (property "Reference" "C24" (at 62.865 141.605 0)
+    (property "Reference" "C23" (at 62.865 141.605 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "10u" (at 62.865 144.145 0)
@@ -2854,7 +2814,7 @@
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "C24") (unit 1)
+          (reference "C23") (unit 1)
         )
       )
     )
@@ -3309,7 +3269,7 @@
   (symbol (lib_id "Device:C") (at 104.14 153.67 0) (mirror y) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid c1ac279f-24d5-4609-9dff-d49dd9ca0a0a)
-    (property "Reference" "C23" (at 100.965 152.4 0)
+    (property "Reference" "C22" (at 100.965 152.4 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "100n" (at 100.965 154.94 0)
@@ -3326,7 +3286,7 @@
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "C23") (unit 1)
+          (reference "C22") (unit 1)
         )
       )
     )
@@ -3462,7 +3422,7 @@
   (symbol (lib_id "Device:C") (at 93.345 151.13 0) (mirror y) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid f1ad3da3-c09d-412f-99f5-c12694d287c9)
-    (property "Reference" "C22" (at 90.17 149.86 0)
+    (property "Reference" "C21" (at 90.17 149.86 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "100n" (at 90.17 152.4 0)
@@ -3479,7 +3439,7 @@
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
-          (reference "C22") (unit 1)
+          (reference "C21") (unit 1)
         )
       )
     )
