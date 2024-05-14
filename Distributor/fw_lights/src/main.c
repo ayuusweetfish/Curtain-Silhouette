@@ -56,9 +56,10 @@ uint32_t colours[8] = {
   0x041100, 0x110200, 0x041100, 0x050522,
 };
 
-uint16_t out_buf[11][8] = {{ 0 }};
+uint16_t out_buf[41][5] = {{ 0 }};
 
 inline void run();
+void process_lights();
 
 int main()
 {
@@ -197,19 +198,6 @@ int main()
     HAL_Delay(400);
   }
 
-  spi_rx_buf[0] = 15;
-  spi_rx_buf[1] = 6;
-
-  // Light [0] yellow
-  out_buf[0][3] = 1;
-  // Light [4] red
-  out_buf[4][3] = 1;
-  out_buf[4][2] = 1;
-  out_buf[4][1] = 1;
-  out_buf[4][0] = 1;
-  // Light [10] yellow
-  out_buf[10][3] = 1;
-
   inline uint32_t my_rand() {
     uint32_t seed = 2451023;
     seed = seed * 1103515245 + 12345;
@@ -219,6 +207,8 @@ int main()
   float colour_values[2] = {0, 0};
 
   int count = 0;
+  int phase = 0;
+
   while (1) {
     __disable_irq();
     // __set_BASEPRI(1 << 4);
@@ -228,26 +218,14 @@ int main()
     // HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 1); HAL_Delay(499);
     HAL_Delay(18);
 
-    float rate1 = 0.5f * (1 + sinf(count * (float)(0.02 * M_PI * 2)));
-    float rate2 = 0.5f * (1 + sinf(count * (float)(0.02 * M_PI * 2) + (float)(M_PI * 0.5)));
-    float rate3 = 0.5f * (1 + sinf(count * (float)(0.02 * M_PI * 2) + (float)(M_PI * 1)));
-    float rate4 = 0.5f * (1 + sinf(count * (float)(0.02 * M_PI * 2) + (float)(M_PI * 1.5)));
-    // colours[0] = ((uint8_t)(0x11 * rate1) << 16) | ((uint8_t)(0x44 * rate1) << 8) | (uint8_t)(0x00 * rate1);
-    // colours[1] = ((uint8_t)(0x33 * rate2) << 16) | ((uint8_t)(0x00 * rate2) << 8) | (uint8_t)(0x11 * rate2);
-    colours[6] =
-      ((uint32_t)(0x11 * rate1 + 0x33 * rate2) << 16) |
-      ((uint32_t)(0x44 * rate1 + 0x00 * rate2) <<  8) |
-      ((uint32_t)(0x00 * rate1 + 0x11 * rate2) <<  0);
-    colours[7] =
-      ((uint32_t)(0x11 * rate3 + 0x33 * rate4) << 16) |
-      ((uint32_t)(0x44 * rate3 + 0x00 * rate4) <<  8) |
-      ((uint32_t)(0x00 * rate3 + 0x11 * rate4) <<  0);
-  /*
-    colour_values[0] += ((float)spi_rx_buf[0] - colour_values[0]) / 10;
-    colour_values[1] += ((float)spi_rx_buf[1] - colour_values[1]) / 10;
-    colours[0] = ((uint32_t)(colour_values[0] / 4) << 16) | 0;
-    colours[1] = ((uint32_t)(colour_values[1] / 4) <<  8) | 0;
-  */
+    if (count & 1) phase = (phase + 1) % 32;
+    for (int i = 0; i < 41; i++)
+      if (i % 4 == 1) spi_rx_buf[i] = 255;
+      else {
+        int x = (i / 2 + phase) % 32;
+        spi_rx_buf[i] = (x >= 16 ? (31 - x) : x);
+      }
+    process_lights();
 
     if (++count % 50 == 0) {
       if (count == 100) count = 0;
@@ -262,13 +240,23 @@ int main()
   }
 }
 
+void process_lights()
+{
+  for (int pendu = 0; pendu < 41; pendu++) {
+    for (int bit = 0; bit <= 3; bit++) {
+      out_buf[pendu][bit] = (spi_rx_buf[pendu] >> bit) & 1;
+    }
+    out_buf[pendu][4] = (spi_rx_buf[pendu] == 255 ? 0 : 0xffff);
+  }
+}
+
 // LED used is WS2812 (instead of WS2812B; the timing requirements are different)
 #pragma GCC optimize("O3")
 void run()
 {
   TIM3->SR = ~TIM_SR_UIF;
 
-  for (int i = 0; i < 11; i++) {
+  for (int i = 0; i < 41; i++) {
     #define OUTPUT_BITS(_bits) do { \
       /* Output a bit vector for all 8 lights in each group at bit `j` */ \
       uint16_t bits = (_bits); \
@@ -289,20 +277,20 @@ void run()
     OUTPUT_BITS(0);
     OUTPUT_BITS(0);
     OUTPUT_BITS(0);
-    OUTPUT_BITS(~out_buf[i][3]);
-    OUTPUT_BITS(~out_buf[i][2]);
-    OUTPUT_BITS(~out_buf[i][1]);
-    OUTPUT_BITS(~out_buf[i][0]);
+    OUTPUT_BITS(~out_buf[i][3] & out_buf[i][4]);
+    OUTPUT_BITS(~out_buf[i][2] & out_buf[i][4]);
+    OUTPUT_BITS(~out_buf[i][1] & out_buf[i][4]);
+    OUTPUT_BITS(~out_buf[i][0] & out_buf[i][4]);
 
     // R
     OUTPUT_BITS(0);
     OUTPUT_BITS(0);
     OUTPUT_BITS(0);
     OUTPUT_BITS(0);
-    OUTPUT_BITS(out_buf[i][3]);
-    OUTPUT_BITS(out_buf[i][2]);
-    OUTPUT_BITS(out_buf[i][1]);
-    OUTPUT_BITS(out_buf[i][0]);
+    OUTPUT_BITS(out_buf[i][3] & out_buf[i][4]);
+    OUTPUT_BITS(out_buf[i][2] & out_buf[i][4]);
+    OUTPUT_BITS(out_buf[i][1] & out_buf[i][4]);
+    OUTPUT_BITS(out_buf[i][0] & out_buf[i][4]);
 
     // B
     OUTPUT_BITS(0);
