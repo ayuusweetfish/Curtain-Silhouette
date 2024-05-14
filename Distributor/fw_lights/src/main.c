@@ -56,8 +56,7 @@ uint32_t colours[8] = {
   0x041100, 0x110200, 0x041100, 0x050522,
 };
 
-volatile uint16_t out_buf[24 * 8];
-volatile int out_buf_ptr = 0, out_buf_sub = 0;
+uint16_t out_buf[11][8] = {{ 0 }};
 
 inline void run();
 
@@ -119,13 +118,6 @@ int main()
   HAL_GPIO_Init(GPIOA, &gpio_init);
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
 
-  for (int i = 0; i < 8; i++) {
-    for (int j = 0; j < 24; j++) {
-      int bit = (colours[i] >> (23 - j)) & 1;
-      out_buf[24 * i + j] = -bit;
-    }
-  }
-
   // ======== Timer ========
   __HAL_RCC_TIM3_CLK_ENABLE();
   tim3 = (TIM_HandleTypeDef){
@@ -134,7 +126,7 @@ int main()
       .Prescaler = 1 - 1,
       // .Prescaler = 10000 - 1,
       .CounterMode = TIM_COUNTERMODE_UP,
-      .Period = 16 - 1,
+      .Period = 80 - 1,
       // .Period = 2000 - 1,
       .ClockDivision = TIM_CLOCKDIVISION_DIV1,
       .RepetitionCounter = 0,
@@ -208,6 +200,16 @@ int main()
   spi_rx_buf[0] = 15;
   spi_rx_buf[1] = 6;
 
+  // Light [0] yellow
+  out_buf[0][3] = 1;
+  // Light [4] red
+  out_buf[4][3] = 1;
+  out_buf[4][2] = 1;
+  out_buf[4][1] = 1;
+  out_buf[4][0] = 1;
+  // Light [10] yellow
+  out_buf[10][3] = 1;
+
   inline uint32_t my_rand() {
     uint32_t seed = 2451023;
     seed = seed * 1103515245 + 12345;
@@ -216,8 +218,6 @@ int main()
 
   float colour_values[2] = {0, 0};
 
-// #define GPIOx GPIOF
-#define GPIOx GPIOA
   int count = 0;
   while (1) {
     __disable_irq();
@@ -248,12 +248,6 @@ int main()
     colours[0] = ((uint32_t)(colour_values[0] / 4) << 16) | 0;
     colours[1] = ((uint32_t)(colour_values[1] / 4) <<  8) | 0;
   */
-    for (int i = 0; i < 8; i++) {
-      for (int j = 0; j < 24; j++) {
-        int bit = (colours[i] >> (23 - j)) & 1;
-        out_buf[24 * i + j] = -bit;
-      }
-    }
 
     if (++count % 50 == 0) {
       if (count == 100) count = 0;
@@ -273,20 +267,52 @@ int main()
 void run()
 {
   TIM3->SR = ~TIM_SR_UIF;
-  for (int i = 0; i < 24 * 8; i++) {
-    while ((TIM3->SR & TIM_SR_UIF) == 0) { } TIM3->SR = ~TIM_SR_UIF;
 
-    GPIOx->ODR = 0xffff;
-    while ((TIM3->SR & TIM_SR_UIF) == 0) { } TIM3->SR = ~TIM_SR_UIF;
+  for (int i = 0; i < 11; i++) {
+    #define OUTPUT_BITS(_bits) do { \
+      /* Output a bit vector for all 8 lights in each group at bit `j` */ \
+      uint16_t bits = (_bits); \
+      \
+      while ((TIM3->SR & TIM_SR_UIF) == 0) { } \
+      TIM3->SR = ~TIM_SR_UIF; \
+      GPIOA->ODR = 0xffff; \
+      \
+      while (TIM3->CNT < 16) { } \
+      GPIOA->ODR = bits; \
+      \
+      while (TIM3->CNT < 48) { } \
+      GPIOA->ODR = 0x0000; \
+    } while (0)
 
-    GPIOx->ODR = out_buf[i];
-    while ((TIM3->SR & TIM_SR_UIF) == 0) { } TIM3->SR = ~TIM_SR_UIF;
-    // GPIOx->ODR = out_buf[i];
-    while ((TIM3->SR & TIM_SR_UIF) == 0) { } TIM3->SR = ~TIM_SR_UIF;
+    // G
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(~out_buf[i][3]);
+    OUTPUT_BITS(~out_buf[i][2]);
+    OUTPUT_BITS(~out_buf[i][1]);
+    OUTPUT_BITS(~out_buf[i][0]);
 
-    GPIOx->ODR = 0x0000;
-    while ((TIM3->SR & TIM_SR_UIF) == 0) { } TIM3->SR = ~TIM_SR_UIF;
-    // GPIOx->ODR = 0x0000;
+    // R
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(out_buf[i][3]);
+    OUTPUT_BITS(out_buf[i][2]);
+    OUTPUT_BITS(out_buf[i][1]);
+    OUTPUT_BITS(out_buf[i][0]);
+
+    // B
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(0);
   }
 }
 
