@@ -49,9 +49,14 @@ TIM_HandleTypeDef tim3;
 SPI_HandleTypeDef spi2;
 DMA_HandleTypeDef dma1_ch1;
 
-uint8_t spi_rx_buf[2] = {0, 0};
+uint8_t spi_rx_buf[25 * 120] = {0};
+// GRB8
+uint32_t colours[8] = {
+  0x114400, 0x330011, 0x0a4400, 0x050522,
+  0x041100, 0x110200, 0x041100, 0x050522,
+};
 
-volatile uint16_t out_buf[48];
+volatile uint16_t out_buf[24 * 8];
 volatile int out_buf_ptr = 0, out_buf_sub = 0;
 
 inline void run();
@@ -114,12 +119,7 @@ int main()
   HAL_GPIO_Init(GPIOA, &gpio_init);
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
 
-  // GRB8
-  // White works well; some 0's are recognised as 1's
-  uint32_t colours[2] = {0x114400, 0x330011};
-  // uint32_t colours[2] = {0x000000, 0x000000};
-  // uint32_t colours[2] = {0xffffff, 0xffffff};
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < 8; i++) {
     for (int j = 0; j < 24; j++) {
       int bit = (colours[i] >> (23 - j)) & 1;
       out_buf[24 * i + j] = -bit;
@@ -199,11 +199,14 @@ int main()
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
-  HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 2);
+  // HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 2);
   while (0) {
     swv_printf("data %02x %02x\n", (int)spi_rx_buf[0], (int)spi_rx_buf[1]);
     HAL_Delay(400);
   }
+
+  spi_rx_buf[0] = 15;
+  spi_rx_buf[1] = 6;
 
   inline uint32_t my_rand() {
     uint32_t seed = 2451023;
@@ -224,14 +227,6 @@ int main()
     // HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 0); HAL_Delay(499);
     // HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 1); HAL_Delay(499);
     HAL_Delay(18);
-    if (0) for (int i = 0; i < 2; i++)
-      for (int j = 0; j < 3; j++) {
-        int b = (colours[i] >> (j * 8)) & 0xff;
-        if (b == 0x00) colours[i] += (1 << (j * 8));
-        else if (b == 0x80) colours[i] -= (1 << (j * 8));
-        else if (my_rand() % 2 == 0) colours[i] += (1 << (j * 8));
-        else colours[i] -= (1 << (j * 8));
-      }
 
     float rate1 = 0.5f * (1 + sinf(count * (float)(0.02 * M_PI * 2)));
     float rate2 = 0.5f * (1 + sinf(count * (float)(0.02 * M_PI * 2) + (float)(M_PI * 0.5)));
@@ -239,19 +234,21 @@ int main()
     float rate4 = 0.5f * (1 + sinf(count * (float)(0.02 * M_PI * 2) + (float)(M_PI * 1.5)));
     // colours[0] = ((uint8_t)(0x11 * rate1) << 16) | ((uint8_t)(0x44 * rate1) << 8) | (uint8_t)(0x00 * rate1);
     // colours[1] = ((uint8_t)(0x33 * rate2) << 16) | ((uint8_t)(0x00 * rate2) << 8) | (uint8_t)(0x11 * rate2);
-    colours[0] =
+    colours[6] =
       ((uint32_t)(0x11 * rate1 + 0x33 * rate2) << 16) |
       ((uint32_t)(0x44 * rate1 + 0x00 * rate2) <<  8) |
       ((uint32_t)(0x00 * rate1 + 0x11 * rate2) <<  0);
-    colours[1] =
+    colours[7] =
       ((uint32_t)(0x11 * rate3 + 0x33 * rate4) << 16) |
       ((uint32_t)(0x44 * rate3 + 0x00 * rate4) <<  8) |
       ((uint32_t)(0x00 * rate3 + 0x11 * rate4) <<  0);
+  /*
     colour_values[0] += ((float)spi_rx_buf[0] - colour_values[0]) / 10;
     colour_values[1] += ((float)spi_rx_buf[1] - colour_values[1]) / 10;
     colours[0] = ((uint32_t)(colour_values[0] / 4) << 16) | 0;
     colours[1] = ((uint32_t)(colour_values[1] / 4) <<  8) | 0;
-    if (1) for (int i = 0; i < 2; i++) {
+  */
+    for (int i = 0; i < 8; i++) {
       for (int j = 0; j < 24; j++) {
         int bit = (colours[i] >> (23 - j)) & 1;
         out_buf[24 * i + j] = -bit;
@@ -276,7 +273,7 @@ int main()
 void run()
 {
   TIM3->SR = ~TIM_SR_UIF;
-  for (int i = 0; i < 48; i++) {
+  for (int i = 0; i < 24 * 8; i++) {
     while ((TIM3->SR & TIM_SR_UIF) == 0) { } TIM3->SR = ~TIM_SR_UIF;
 
     GPIOx->ODR = 0xffff;
