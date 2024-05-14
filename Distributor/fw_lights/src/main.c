@@ -50,12 +50,6 @@ SPI_HandleTypeDef spi2;
 DMA_HandleTypeDef dma1_ch1;
 
 uint8_t spi_rx_buf[25 * 120] = {0};
-// GRB8
-uint32_t colours[8] = {
-  0x114400, 0x330011, 0x0a4400, 0x050522,
-  0x041100, 0x110200, 0x041100, 0x050522,
-};
-
 uint16_t out_buf[41][5] = {{ 0 }};
 
 inline void run();
@@ -112,12 +106,15 @@ int main()
   HAL_GPIO_Init(GPIOF, &gpio_init);
   HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0 | GPIO_PIN_1, 1);
 
-  gpio_init.Pull = GPIO_NOPULL;
-  gpio_init.Speed = GPIO_SPEED_FREQ_HIGH;
-  gpio_init.Pin = GPIO_PIN_0;
-  gpio_init.Mode = GPIO_MODE_OUTPUT_PP;
+  gpio_init = (GPIO_InitTypeDef){
+    .Pin = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3 |
+           GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7 |
+           GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12,
+    .Mode = GPIO_MODE_OUTPUT_PP,
+    .Speed = GPIO_SPEED_FREQ_HIGH,
+  };
   HAL_GPIO_Init(GPIOA, &gpio_init);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
+  HAL_GPIO_WritePin(GPIOA, gpio_init.Pin, 0);
 
   // ======== Timer ========
   __HAL_RCC_TIM3_CLK_ENABLE();
@@ -219,12 +216,14 @@ int main()
     HAL_Delay(18);
 
     if (count & 1) phase = (phase + 1) % 32;
-    for (int i = 0; i < 41; i++)
-      if (i % 4 == 1) spi_rx_buf[i] = 255;
-      else {
-        int x = (i / 2 + phase) % 32;
-        spi_rx_buf[i] = (x >= 16 ? (31 - x) : x);
-      }
+    for (int strip = 0; strip < 8; strip++) {
+      for (int i = 0; i < 41; i++)
+        if (i % 4 == strip % 4) spi_rx_buf[strip * 120 + i] = 255;
+        else {
+          int x = (i / 2 + phase) % 32;
+          spi_rx_buf[strip * 120 + i] = (x >= 16 ? (31 - x) : x);
+        }
+    }
     process_lights();
 
     if (++count % 50 == 0) {
@@ -244,9 +243,25 @@ void process_lights()
 {
   for (int pendu = 0; pendu < 41; pendu++) {
     for (int bit = 0; bit <= 3; bit++) {
-      out_buf[pendu][bit] = (spi_rx_buf[pendu] >> bit) & 1;
+      out_buf[pendu][bit] =
+        (((spi_rx_buf[0 * 120 + pendu] >> bit) & 1) << 0) | 
+        (((spi_rx_buf[1 * 120 + pendu] >> bit) & 1) << 1) | 
+        (((spi_rx_buf[2 * 120 + pendu] >> bit) & 1) << 2) | 
+        (((spi_rx_buf[3 * 120 + pendu] >> bit) & 1) << 3) | 
+        (((spi_rx_buf[4 * 120 + pendu] >> bit) & 1) << 4) | 
+        (((spi_rx_buf[5 * 120 + pendu] >> bit) & 1) << 5) | 
+        (((spi_rx_buf[6 * 120 + pendu] >> bit) & 1) << 6) | 
+        (((spi_rx_buf[7 * 120 + pendu] >> bit) & 1) << 7);
     }
-    out_buf[pendu][4] = (spi_rx_buf[pendu] == 255 ? 0 : 0xffff);
+    out_buf[pendu][4] =
+      (spi_rx_buf[0 * 120 + pendu] == 255 ? 0 : (1 << 0)) |
+      (spi_rx_buf[1 * 120 + pendu] == 255 ? 0 : (1 << 1)) |
+      (spi_rx_buf[2 * 120 + pendu] == 255 ? 0 : (1 << 2)) |
+      (spi_rx_buf[3 * 120 + pendu] == 255 ? 0 : (1 << 3)) |
+      (spi_rx_buf[4 * 120 + pendu] == 255 ? 0 : (1 << 4)) |
+      (spi_rx_buf[5 * 120 + pendu] == 255 ? 0 : (1 << 5)) |
+      (spi_rx_buf[6 * 120 + pendu] == 255 ? 0 : (1 << 6)) |
+      (spi_rx_buf[7 * 120 + pendu] == 255 ? 0 : (1 << 7));
   }
 }
 
