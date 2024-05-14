@@ -50,7 +50,7 @@ SPI_HandleTypeDef spi2;
 DMA_HandleTypeDef dma1_ch1;
 
 uint8_t spi_rx_buf[25 * 120] = {0};
-uint16_t out_buf[41][5] = {{ 0 }};
+uint16_t out_buf[120][5] = {{ 0 }};
 
 inline void run();
 void process_lights();
@@ -201,23 +201,26 @@ int main()
     return seed & 0x7fffffff;
   }
 
-  float colour_values[2] = {0, 0};
-
   int count = 0;
   int phase = 0;
 
+  uint32_t tick = HAL_GetTick();
+
   while (1) {
     __disable_irq();
-    // __set_BASEPRI(1 << 4);
+    // __set_BASEPRI(1 << 4);  // Disable all interrupts with priority >= 1
+    // asm volatile ("MSR basepri, %0" : : "r" (1 << 4) : "memory");
     run();
     __enable_irq();
-    // HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 0); HAL_Delay(499);
-    // HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 1); HAL_Delay(499);
-    HAL_Delay(18);
+    // asm volatile ("MSR basepri, %0" : : "r" (0 << 4) : "memory");
+
+    uint32_t cur;
+    while ((cur = HAL_GetTick()) - tick < 20) { }
+    tick = cur;
 
     if (count & 1) phase = (phase + 1) % 32;
     for (int strip = 0; strip < 8; strip++) {
-      for (int i = 0; i < 41; i++)
+      for (int i = 0; i < 120; i++)
         if (i % 4 == strip % 4) spi_rx_buf[strip * 120 + i] = 255;
         else {
           int x = (i / 2 + phase) % 32;
@@ -241,7 +244,7 @@ int main()
 
 void process_lights()
 {
-  for (int pendu = 0; pendu < 41; pendu++) {
+  for (int pendu = 0; pendu < 120; pendu++) {
     for (int bit = 0; bit <= 3; bit++) {
       out_buf[pendu][bit] =
         (((spi_rx_buf[0 * 120 + pendu] >> bit) & 1) << 0) | 
@@ -271,7 +274,7 @@ void run()
 {
   TIM3->SR = ~TIM_SR_UIF;
 
-  for (int i = 0; i < 41; i++) {
+  for (int i = 0; i < 120; i++) {
     #define OUTPUT_BITS(_bits) do { \
       /* Output a bit vector for all 8 lights in each group at bit `j` */ \
       uint16_t bits = (_bits); \
