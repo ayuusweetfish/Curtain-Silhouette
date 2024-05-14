@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "mlx90640/MLX90640_API.h"
+
 // #define RELEASE
 #ifndef RELEASE
 #define _release_inline
@@ -233,6 +235,24 @@ int main()
   };
   HAL_I2C_Init(&i2c2);
 
+  // MLX90640
+  MLX90640_SetResolution(0x33, 0x03);  // 19-bit
+  MLX90640_SetRefreshRate(0x33, 0x04);  // 8 Hz
+
+  static uint16_t mlx90640_ee[832];
+  MLX90640_DumpEE(0x33, mlx90640_ee);
+  paramsMLX90640 mlx90640_params;
+  MLX90640_ExtractParameters(mlx90640_ee, &mlx90640_params);
+
+  MLX90640_SynchFrame(0x33);
+  // MLX90640_TriggerMeasurement(0x33);
+  static uint16_t mlx90640_frame[834];
+  MLX90640_GetFrameData(0x33, mlx90640_frame);
+
+  static float mlx90640_image[768];
+  MLX90640_GetImage(mlx90640_frame, &mlx90640_params, mlx90640_image);
+  swv_printf("temp = %d, %d\n", (int)mlx90640_image[0], (int)mlx90640_image[1]);
+
 /*
   uint8_t mfid[2] = {0, 0};
   int result = HAL_I2C_Mem_Read(&i2c2, 0x15 << 1, 0x1c, I2C_MEMADD_SIZE_8BIT, mfid, 1, 1000);
@@ -263,6 +283,12 @@ int main()
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x71, I2C_MEMADD_SIZE_8BIT, &test_pattern_y, 1, 1000);
 */
   swv_printf("err %d\n", i2c2.ErrorCode);
+
+  if (i2c2.ErrorCode != 0) while (1) {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1); HAL_Delay(200);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); HAL_Delay(200);
+  }
+  return MLX90640_NO_ERROR;
 
   uint32_t t0 = HAL_GetTick();
   uint32_t count = 0;
@@ -325,6 +351,37 @@ int main()
     swv_printf("SPI tx result = %d\n", result);
 */
   }
+}
+
+int MLX90640_I2CRead(uint8_t slaveAddr, uint16_t startAddress, uint16_t nMemAddressRead, uint16_t *data)
+{
+  HAL_I2C_Mem_Read(&i2c2, slaveAddr << 1,
+    startAddress, I2C_MEMADD_SIZE_16BIT,
+    (uint8_t *)data, nMemAddressRead * 2, 1000);
+  for (int i = 0; i < nMemAddressRead; i++)
+    data[i] = __builtin_bswap16(data[i]);
+  swv_printf("MLX90640 I2C read register %04x @ %u, I2C2 error code %u\n",
+    (unsigned)startAddress, (unsigned)nMemAddressRead, (unsigned)i2c2.ErrorCode);
+  if (i2c2.ErrorCode != 0) while (1) {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1); HAL_Delay(200);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); HAL_Delay(200);
+  }
+  return MLX90640_NO_ERROR;
+}
+
+int MLX90640_I2CWrite(uint8_t slaveAddr, uint16_t writeAddress, uint16_t data)
+{
+  uint8_t bytes[2] = {data >> 8, data & 0xff};
+  HAL_I2C_Mem_Write(&i2c2, slaveAddr << 1,
+    writeAddress, I2C_MEMADD_SIZE_16BIT,
+    (uint8_t *)bytes, 2, 1000);
+  swv_printf("MLX90640 I2C write register %04x (value %04x), I2C2 error code %u\n",
+    (unsigned)writeAddress, (unsigned)data, (unsigned)i2c2.ErrorCode);
+  if (i2c2.ErrorCode != 0) while (1) {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1); HAL_Delay(200);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); HAL_Delay(200);
+  }
+  return MLX90640_NO_ERROR;
 }
 
 void SysTick_Handler()
