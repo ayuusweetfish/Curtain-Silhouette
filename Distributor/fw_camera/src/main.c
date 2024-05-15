@@ -147,7 +147,7 @@ int main()
   // Test
   uint8_t data[6] = {0, 1};
 
-  while (1) {
+  while (0) {
     static int parity = 1;
     HAL_Delay(1000);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, parity ^= 1);
@@ -249,8 +249,8 @@ int main()
       // APB = 64 MHz
       // PRESC = 7 (1 / (64 MHz / (7+1)) = 0.125 us)
       // SCLDEL = 1, SDADEL = 1
-      // SCLH = 39, SCLL = 39 -> f_SCL = 1 / (80 * t_PRESC) = 100 kHz
-      .Timing = 0x70112727,
+      // SCLH = 9, SCLL = 9 -> f_SCL = 1 / (20 * t_PRESC) = 400 kHz
+      .Timing = 0x70110909,
       .OwnAddress1 = 0x00,
       .AddressingMode = I2C_ADDRESSINGMODE_7BIT,
     },
@@ -269,11 +269,24 @@ int main()
   MLX90640_SynchFrame(0x33);
   // MLX90640_TriggerMeasurement(0x33);
   static uint16_t mlx90640_frame[834];
+
   MLX90640_GetFrameData(0x33, mlx90640_frame);
+  float mlx90640_vdd = MLX90640_GetVdd(mlx90640_frame, &mlx90640_params);
+  swv_printf("Vdd = %d mV\n", (int)(mlx90640_vdd * 1000));
+  float mlx90640_ta = MLX90640_GetTa(mlx90640_frame, &mlx90640_params);
+  swv_printf("Ta = %d /100 C\n", (int)(mlx90640_ta * 100));
+
+  int subpage = MLX90640_GetSubPageNumber(mlx90640_frame);
 
   static float mlx90640_image[768];
-  MLX90640_GetImage(mlx90640_frame, &mlx90640_params, mlx90640_image);
-  swv_printf("temp = %d, %d\n", (int)mlx90640_image[0], (int)mlx90640_image[1]);
+  // MLX90640_GetImage(mlx90640_frame, &mlx90640_params, mlx90640_image);
+  MLX90640_CalculateTo(mlx90640_frame, &mlx90640_params,
+    0.95, mlx90640_ta - 8, mlx90640_image);
+  swv_printf("subpage = %d, temp = %d, %d, %d, %d\n",
+    subpage,
+    (int)mlx90640_image[0], (int)mlx90640_image[1],
+    (int)mlx90640_image[2], (int)mlx90640_image[3]
+  );
 
 /*
   uint8_t mfid[2] = {0, 0};
