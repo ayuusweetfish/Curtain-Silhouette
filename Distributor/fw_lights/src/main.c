@@ -220,14 +220,20 @@ int main()
     while ((cur = HAL_GetTick()) - tick < 20) { }
     tick = cur;
 
-    if (count & 1) phase = (phase + 1) % 32;
+    if (count % 5 == 0) phase = (phase + 1) % 32;
     for (int strip = 0; strip < 8; strip++) {
-      for (int i = 0; i < 120; i++)
-        if (i % 4 == strip % 4) spi_rx_buf[strip * 120 + i] = 255;
-        else {
-          int x = (i / 2 + phase) % 32;
-          spi_rx_buf[strip * 120 + i] = (x >= 16 ? (31 - x) : x);
+      for (int i = 0; i < 120; i++) {
+        // if (i % 8 == strip % 8) spi_rx_buf[strip * 120 + i] = 255;
+        // if (i % 16 < 14) spi_rx_buf[strip * 120 + i] = 255;
+        // else {
+        {
+          int x = (i / 2 + phase) % 8;
+          // spi_rx_buf[strip * 120 + i] = (x >= 4 ? (7 - x) : x);
+          x = (i / 2) % 8;
+          spi_rx_buf[strip * 120 + i] = (x < 4 ? 0 : 3);
         }
+        // if (strip == 0) spi_rx_buf[strip * 120 + i] = 0;
+      }
     }
     process_lights();
 
@@ -297,20 +303,36 @@ void run()
     OUTPUT_BITS(0);
     OUTPUT_BITS(0);
     OUTPUT_BITS(0);
-    OUTPUT_BITS(~out_buf[i][3] & out_buf[i][4]);
-    OUTPUT_BITS(~out_buf[i][2] & out_buf[i][4]);
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(0);
+    // OUTPUT_BITS(~out_buf[i][3] & out_buf[i][4]);
+    // OUTPUT_BITS(~out_buf[i][2] & out_buf[i][4]);
     OUTPUT_BITS(~out_buf[i][1] & out_buf[i][4]);
     OUTPUT_BITS(~out_buf[i][0] & out_buf[i][4]);
+  /*
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(i % 16 < 8 ? 1 : 0);
+    OUTPUT_BITS(i % 16 < 8 ? 1 : 0);
+  */
 
     // R
     OUTPUT_BITS(0);
     OUTPUT_BITS(0);
     OUTPUT_BITS(0);
     OUTPUT_BITS(0);
-    OUTPUT_BITS(out_buf[i][3] & out_buf[i][4]);
-    OUTPUT_BITS(out_buf[i][2] & out_buf[i][4]);
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(0);
+    // OUTPUT_BITS(out_buf[i][3] & out_buf[i][4]);
+    // OUTPUT_BITS(out_buf[i][2] & out_buf[i][4]);
     OUTPUT_BITS(out_buf[i][1] & out_buf[i][4]);
     OUTPUT_BITS(out_buf[i][0] & out_buf[i][4]);
+  /*
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(0);
+    OUTPUT_BITS(0);
+  */
 
     // B
     OUTPUT_BITS(0);
@@ -320,7 +342,7 @@ void run()
     OUTPUT_BITS(0);
     OUTPUT_BITS(0);
     OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
+    OUTPUT_BITS((~out_buf[i][1] | out_buf[i][1]) & out_buf[i][4]);
   }
 }
 
