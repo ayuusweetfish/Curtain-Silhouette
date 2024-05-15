@@ -184,12 +184,14 @@ int main()
 
   __HAL_LINKDMA(&spi2, hdmarx, dma1_ch1);
   HAL_DMA_Init(&dma1_ch1);
-  __HAL_DMA_ENABLE_IT(&dma1_ch1, DMA_IT_TC | DMA_IT_TE);
   __HAL_DMA_ENABLE(&dma1_ch1);
+  __HAL_DMA_ENABLE_IT(&dma1_ch1, DMA_IT_TC);
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
-  // HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 2);
+  HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 6);
+  __HAL_DMA_DISABLE_IT(&dma1_ch1, DMA_IT_HT); // We don't need the half-transfer interrupt
+
   while (0) {
     swv_printf("data %02x %02x\n", (int)spi_rx_buf[0], (int)spi_rx_buf[1]);
     HAL_Delay(400);
@@ -340,10 +342,17 @@ void EXTI0_1_IRQHandler() { while (1) { } }
 void EXTI2_3_IRQHandler() { while (1) { } }
 void EXTI4_15_IRQHandler() { while (1) { } }
 void DMA1_Channel1_IRQHandler() {
+  // swv_printf("DMA1 CCR %08x, SPI2 CR1 %08x\n", dma1_ch1.Instance->CCR, spi2.Instance->CR1);
   HAL_DMA_IRQHandler(&dma1_ch1);
   HAL_SPI_IRQHandler(&spi2);
+  // swv_printf("DMA1 CCR %08x, SPI2 CR1 %08x\n", dma1_ch1.Instance->CCR, spi2.Instance->CR1);
+  swv_printf("data %02x %02x %02x %02x %02x %02x\n",
+    spi_rx_buf[0], spi_rx_buf[1], spi_rx_buf[2], spi_rx_buf[3], spi_rx_buf[4], spi_rx_buf[5]);
   if (spi2.ErrorCode == 0) {
-    HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 2);
+    HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 6);
+    __HAL_DMA_DISABLE_IT(&dma1_ch1, DMA_IT_HT);
+    static int parity = 1;
+    HAL_GPIO_WritePin(GPIOF, GPIO_PIN_1, parity ^= 1);
   } else {
     swv_printf("SPI error %d\n", (int)spi2.ErrorCode);
     while (1) {

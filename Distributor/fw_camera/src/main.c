@@ -139,6 +139,28 @@ int main()
   HAL_GPIO_Init(GPIOA, &gpio_init);
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0 | GPIO_PIN_1, 1);
 
+  for (int i = 0; i < 2; i++) {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); HAL_Delay(50);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1); HAL_Delay(50);
+  }
+
+  // Test
+  uint8_t data[6] = {0, 1};
+
+  while (1) {
+    static int parity = 1;
+    HAL_Delay(1000);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, parity ^= 1);
+
+    for (int i = 5; i >= 2; i--) data[i] = data[i - 2];
+    data[0] += 1;
+    data[1] = data[1] * 5 + 1;
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 0);
+    int result = HAL_SPI_Transmit(&spi2, data, 6, 1000);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 1);
+    swv_printf("SPI tx result = %d\n", result);
+  }
+
   // GPIO initialisation is done by `HAL_RCC_MCOConfig`
 /*
   gpio_init.Pin = GPIO_PIN_8;
@@ -288,7 +310,6 @@ int main()
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1); HAL_Delay(200);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); HAL_Delay(200);
   }
-  return MLX90640_NO_ERROR;
 
   uint32_t t0 = HAL_GetTick();
   uint32_t count = 0;
@@ -317,8 +338,6 @@ int main()
 
   HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
 
-  uint8_t data[2] = {0, 1};
-
   uint32_t last_tick = HAL_GetTick();
 
   while (1) {
@@ -341,15 +360,6 @@ int main()
       HAL_SPI_Transmit(&spi2, data, 2, 1000);
       HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 1);
     }
-
-/*
-    data[0] += 1;
-    data[1] = data[1] * 5 + 1;
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 0);
-    int result = HAL_SPI_Transmit(&spi2, data, 2, 1000);
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 1);
-    swv_printf("SPI tx result = %d\n", result);
-*/
   }
 }
 
