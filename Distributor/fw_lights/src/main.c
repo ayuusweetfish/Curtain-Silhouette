@@ -49,8 +49,9 @@ TIM_HandleTypeDef tim3;
 SPI_HandleTypeDef spi2;
 DMA_HandleTypeDef dma1_ch1;
 
-uint8_t spi_rx_buf[25 * 120] = {0};
-uint16_t out_buf[120][5] = {{ 0 }};
+#define N_SUSPEND 200
+uint8_t spi_rx_buf[25 * N_SUSPEND / 2] = {0};
+uint16_t out_buf[N_SUSPEND][5] = {{ 0 }};
 
 inline void run();
 void process_lights();
@@ -220,19 +221,21 @@ int main()
     while ((cur = HAL_GetTick()) - tick < 20) { }
     tick = cur;
 
-    if (count % 5 == 0) phase = (phase + 1) % 32;
+    for (int i = 0; i < sizeof spi_rx_buf / sizeof spi_rx_buf[0]; i++)
+      spi_rx_buf[i] = 0;
+
+    if (count % 2 == 0) phase = (phase + 1) % 8;
     for (int strip = 0; strip < 8; strip++) {
-      for (int i = 0; i < 120; i++) {
-        // if (i % 8 == strip % 8) spi_rx_buf[strip * 120 + i] = 255;
-        // if (i % 16 < 14) spi_rx_buf[strip * 120 + i] = 255;
-        // else {
-        {
+      for (int i = 0; i < N_SUSPEND; i++) {
+        uint8_t value;
+        if (i % 8 == (strip + count / 50) % 8) value = 0xf;
+        else {
           int x = (i / 2 + phase) % 8;
-          // spi_rx_buf[strip * 120 + i] = (x >= 4 ? (7 - x) : x);
-          x = (i / 2) % 8;
-          spi_rx_buf[strip * 120 + i] = (x < 4 ? 0 : 3);
+          value = (x >= 4 ? (7 - x) : x);
+          // x = (i / 2) % 8;
+          // value = (x < 4 ? 0 : 3);
         }
-        // if (strip == 0) spi_rx_buf[strip * 120 + i] = 0;
+        spi_rx_buf[(strip * N_SUSPEND + i) / 2] |= (value << (i % 2 == 0 ? 0 : 4));
       }
     }
     process_lights();
@@ -252,27 +255,28 @@ int main()
 
 void process_lights()
 {
-  for (int pendu = 0; pendu < 120; pendu++) {
-    for (int bit = 0; bit <= 3; bit++) {
+  for (unsigned pendu = 0; pendu < N_SUSPEND; pendu++) {
+    uint8_t shift = (pendu % 2 ? 4 : 0);
+    for (unsigned bit = 0; bit <= 3; bit++) {
       out_buf[pendu][bit] =
-        (((spi_rx_buf[0 * 120 + pendu] >> bit) & 1) << 0) | 
-        (((spi_rx_buf[1 * 120 + pendu] >> bit) & 1) << 1) | 
-        (((spi_rx_buf[2 * 120 + pendu] >> bit) & 1) << 2) | 
-        (((spi_rx_buf[3 * 120 + pendu] >> bit) & 1) << 3) | 
-        (((spi_rx_buf[4 * 120 + pendu] >> bit) & 1) << 4) | 
-        (((spi_rx_buf[5 * 120 + pendu] >> bit) & 1) << 5) | 
-        (((spi_rx_buf[6 * 120 + pendu] >> bit) & 1) << 6) | 
-        (((spi_rx_buf[7 * 120 + pendu] >> bit) & 1) << 7);
+        (((spi_rx_buf[(0 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 0) | 
+        (((spi_rx_buf[(1 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 1) | 
+        (((spi_rx_buf[(2 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 2) | 
+        (((spi_rx_buf[(3 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 3) | 
+        (((spi_rx_buf[(4 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 4) | 
+        (((spi_rx_buf[(5 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 5) | 
+        (((spi_rx_buf[(6 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 6) | 
+        (((spi_rx_buf[(7 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 7);
     }
     out_buf[pendu][4] =
-      (spi_rx_buf[0 * 120 + pendu] == 255 ? 0 : (1 << 0)) |
-      (spi_rx_buf[1 * 120 + pendu] == 255 ? 0 : (1 << 1)) |
-      (spi_rx_buf[2 * 120 + pendu] == 255 ? 0 : (1 << 2)) |
-      (spi_rx_buf[3 * 120 + pendu] == 255 ? 0 : (1 << 3)) |
-      (spi_rx_buf[4 * 120 + pendu] == 255 ? 0 : (1 << 4)) |
-      (spi_rx_buf[5 * 120 + pendu] == 255 ? 0 : (1 << 5)) |
-      (spi_rx_buf[6 * 120 + pendu] == 255 ? 0 : (1 << 6)) |
-      (spi_rx_buf[7 * 120 + pendu] == 255 ? 0 : (1 << 7));
+      (((spi_rx_buf[(0 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 0)) |
+      (((spi_rx_buf[(1 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 1)) |
+      (((spi_rx_buf[(2 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 2)) |
+      (((spi_rx_buf[(3 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 3)) |
+      (((spi_rx_buf[(4 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 4)) |
+      (((spi_rx_buf[(5 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 5)) |
+      (((spi_rx_buf[(6 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 6)) |
+      (((spi_rx_buf[(7 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 7));
   }
 }
 
@@ -282,7 +286,7 @@ void run()
 {
   TIM3->SR = ~TIM_SR_UIF;
 
-  for (int i = 0; i < 120; i++) {
+  for (int i = 0; i < N_SUSPEND; i++) {
     #define OUTPUT_BITS(_bits) do { \
       /* Output a bit vector for all 8 lights in each group at bit `j` */ \
       uint16_t bits = (_bits); \
