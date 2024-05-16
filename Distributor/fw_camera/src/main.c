@@ -148,18 +148,33 @@ int main()
   }
 
   // Test
-  uint8_t data[6] = {0, 1};
 
   while (1) {
     static int parity = 1;
-    HAL_Delay(1000);
+    HAL_Delay(20);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, parity ^= 1);
 
-    for (int i = 5; i >= 2; i--) data[i] = data[i - 2];
-    data[0] += 1;
-    data[1] = data[1] * 5 + 1;
+    // Running lights
 
-    spi_tx_buf[0] = (data[0] % 4);
+    static int count = 0;
+    static int phase = 0;
+
+    for (int i = 0; i < sizeof spi_tx_buf / sizeof spi_tx_buf[0]; i++)
+      spi_tx_buf[i] = 0;
+
+    if (++count % 2 == 0) phase = (phase + 1) % 8;
+    for (int strip = 0; strip < 8; strip++) {
+      for (int i = 0; i < N_SUSPEND; i++) {
+        uint8_t value;
+        if (i % 8 == (strip + count / 50) % 8) value = 0xf;
+        else {
+          int x = (i / 2 + phase) % 8;
+          value = (x >= 4 ? (7 - x) : x);
+        }
+        spi_tx_buf[(strip * N_SUSPEND + i) / 2] |= (value << (i % 2 == 0 ? 0 : 4));
+      }
+    }
+
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 0);
     int result = HAL_SPI_Transmit(&spi2, spi_tx_buf, 25 * N_SUSPEND / 2, 1000);
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 1);
@@ -371,14 +386,6 @@ int main()
       HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, !(frame_errors > 0));
       frame_count = 0;
       frame_errors = 0;
-
-/*
-      data[0] = frame_sum / (640 * 480);
-      data[1] = frame_sum2 / (640 * 480);
-      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 0);
-      HAL_SPI_Transmit(&spi2, data, 2, 1000);
-      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 1);
-*/
     }
   }
 }
