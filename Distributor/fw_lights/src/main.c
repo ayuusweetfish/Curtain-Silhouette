@@ -158,7 +158,7 @@ int main()
       .CLKPolarity = SPI_POLARITY_LOW,  // CPOL = 0
       .CLKPhase = SPI_PHASE_1EDGE,      // CPHA = 0
       .NSS = SPI_NSS_HARD_INPUT,
-      .BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4,
+      .BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2,
       .FirstBit = SPI_FIRSTBIT_MSB,
       .TIMode = SPI_TIMODE_DISABLE,
       .CRCCalculation = SPI_CRCCALCULATION_DISABLE,
@@ -190,7 +190,7 @@ int main()
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
-  HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 6);
+  HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 25 * N_SUSPEND / 2);
   __HAL_DMA_DISABLE_IT(&dma1_ch1, DMA_IT_HT); // We don't need the half-transfer interrupt
 
   while (0) {
@@ -221,6 +221,7 @@ int main()
     while ((cur = HAL_GetTick()) - tick < 20) { }
     tick = cur;
 
+/*
     for (int i = 0; i < sizeof spi_rx_buf / sizeof spi_rx_buf[0]; i++)
       spi_rx_buf[i] = 0;
 
@@ -239,6 +240,7 @@ int main()
       }
     }
     process_lights();
+*/
 
     if (++count % 50 == 0) {
       if (count == 100) count = 0;
@@ -368,14 +370,13 @@ void EXTI0_1_IRQHandler() { while (1) { } }
 void EXTI2_3_IRQHandler() { while (1) { } }
 void EXTI4_15_IRQHandler() { while (1) { } }
 void DMA1_Channel1_IRQHandler() {
-  // swv_printf("DMA1 CCR %08x, SPI2 CR1 %08x\n", dma1_ch1.Instance->CCR, spi2.Instance->CR1);
   HAL_DMA_IRQHandler(&dma1_ch1);
   HAL_SPI_IRQHandler(&spi2);
-  // swv_printf("DMA1 CCR %08x, SPI2 CR1 %08x\n", dma1_ch1.Instance->CCR, spi2.Instance->CR1);
-  swv_printf("data %02x %02x %02x %02x %02x %02x\n",
-    spi_rx_buf[0], spi_rx_buf[1], spi_rx_buf[2], spi_rx_buf[3], spi_rx_buf[4], spi_rx_buf[5]);
+
   if (spi2.ErrorCode == 0) {
-    HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 6);
+    process_lights();
+
+    HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 25 * N_SUSPEND / 2);
     __HAL_DMA_DISABLE_IT(&dma1_ch1, DMA_IT_HT);
     static int parity = 1;
     HAL_GPIO_WritePin(GPIOF, GPIO_PIN_1, parity ^= 1);

@@ -53,6 +53,9 @@ uint32_t frame_count = 0;
 uint32_t frame_sum = 0, frame_sum2 = 0;
 uint32_t frame_errors = 0;
 
+#define N_SUSPEND 200
+uint8_t spi_tx_buf[25 * N_SUSPEND / 2];
+
 int main()
 {
   HAL_Init();
@@ -147,7 +150,7 @@ int main()
   // Test
   uint8_t data[6] = {0, 1};
 
-  while (0) {
+  while (1) {
     static int parity = 1;
     HAL_Delay(1000);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, parity ^= 1);
@@ -155,8 +158,10 @@ int main()
     for (int i = 5; i >= 2; i--) data[i] = data[i - 2];
     data[0] += 1;
     data[1] = data[1] * 5 + 1;
+
+    spi_tx_buf[0] = (data[0] % 4);
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 0);
-    int result = HAL_SPI_Transmit(&spi2, data, 6, 1000);
+    int result = HAL_SPI_Transmit(&spi2, spi_tx_buf, 25 * N_SUSPEND / 2, 1000);
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 1);
     swv_printf("SPI tx result = %d\n", result);
   }
@@ -367,11 +372,13 @@ int main()
       frame_count = 0;
       frame_errors = 0;
 
+/*
       data[0] = frame_sum / (640 * 480);
       data[1] = frame_sum2 / (640 * 480);
       HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 0);
       HAL_SPI_Transmit(&spi2, data, 2, 1000);
       HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 1);
+*/
     }
   }
 }
