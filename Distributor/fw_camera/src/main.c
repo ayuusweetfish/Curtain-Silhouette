@@ -46,6 +46,12 @@ static void swv_printf(const char *restrict fmt, ...)
 #define swv_printf(...)
 #endif
 
+extern uint32_t _etext;
+#define CODE_START_ADDR     0x08000000
+#define CODE_END_ADDR       (uint32_t)(&_etext)
+#define SCRATCH_START_ADDR  ((CODE_END_ADDR + FLASH_PAGE_SIZE - 1) & ~(FLASH_PAGE_SIZE - 1))
+#define SCRATCH_END_ADDR    0x08020000
+
 SPI_HandleTypeDef spi2;
 I2C_HandleTypeDef i2c2;
 
@@ -146,6 +152,33 @@ int main()
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); HAL_Delay(50);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1); HAL_Delay(50);
   }
+
+if (0) {
+  swv_printf("code: %08x ~ %08x\n", CODE_START_ADDR, CODE_END_ADDR);
+  swv_printf("scratch: %08x ~ %08x\n", SCRATCH_START_ADDR, SCRATCH_END_ADDR);
+  swv_printf("empty cell [0]: %08x\n", *(uint32_t *)SCRATCH_START_ADDR);
+
+  FLASH_EraseInitTypeDef erase = {
+    .TypeErase = FLASH_TYPEERASE_PAGES,
+    .Banks = FLASH_BANK_1,
+    .Page = (SCRATCH_START_ADDR - CODE_START_ADDR) / FLASH_PAGE_SIZE,
+    .NbPages = 1,
+  };
+  swv_printf("erase page %08x\n", erase.Page);
+  HAL_FLASH_Unlock();
+  uint32_t page_err;
+  HAL_FLASHEx_Erase(&erase, &page_err);
+  swv_printf("empty cell [0]: %08x\n", *(uint32_t *)SCRATCH_START_ADDR);
+
+  HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, SCRATCH_START_ADDR, 0x1020304a5b6c7daaULL);
+  // 5b6c7daa (little-endian)
+  swv_printf("empty cell [0]: %08x\n", *(uint32_t *)SCRATCH_START_ADDR);
+
+  uint32_t data[64] = {0x1020304a};
+  HAL_FLASH_Program(FLASH_TYPEPROGRAM_FAST, SCRATCH_START_ADDR + 8, (uint32_t)&data[0]);
+  // 1020304a
+  swv_printf("empty cell [2]: %08x\n", *(uint32_t *)(SCRATCH_START_ADDR + 8));
+}
 
   // Test
 
