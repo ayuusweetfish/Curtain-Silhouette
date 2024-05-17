@@ -2680,8 +2680,8 @@
     (property "Datasheet" "~" (at 189.23 28.575 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid e0da697a-a8b9-40d8-86d0-45078940ef13))
-    (pin "2" (uuid b3cabb37-4068-4e8f-95e7-e2903aef9320))
+    (pin "1" (uuid e0da697a-a8b9-40d8-86d0-45078940ef14))
+    (pin "2" (uuid b3cabb37-4068-4e8f-95e7-e2903aef9321))
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
@@ -2757,8 +2757,8 @@
     (property "Datasheet" "~" (at 166.37 28.575 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid e0da697a-a8b9-40d8-86d0-45078940ef13))
-    (pin "2" (uuid b3cabb37-4068-4e8f-95e7-e2903aef9320))
+    (pin "1" (uuid e0da697a-a8b9-40d8-86d0-45078940ef15))
+    (pin "2" (uuid b3cabb37-4068-4e8f-95e7-e2903aef9322))
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
@@ -2861,8 +2861,8 @@
     (property "Datasheet" "~" (at 200.66 28.575 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid e0da697a-a8b9-40d8-86d0-45078940ef13))
-    (pin "2" (uuid b3cabb37-4068-4e8f-95e7-e2903aef9320))
+    (pin "1" (uuid e0da697a-a8b9-40d8-86d0-45078940ef16))
+    (pin "2" (uuid b3cabb37-4068-4e8f-95e7-e2903aef9323))
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
@@ -3272,7 +3272,7 @@
     (property "Reference" "C22" (at 100.965 152.4 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
-    (property "Value" "100n" (at 100.965 154.94 0)
+    (property "Value" "2.2u" (at 100.965 154.94 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Footprint" "Capacitor_SMD:C_0603_1608Metric" (at 103.1748 157.48 0)
@@ -3382,8 +3382,8 @@
     (property "Datasheet" "~" (at 212.09 28.575 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid e0da697a-a8b9-40d8-86d0-45078940ef13))
-    (pin "2" (uuid b3cabb37-4068-4e8f-95e7-e2903aef9320))
+    (pin "1" (uuid e0da697a-a8b9-40d8-86d0-45078940ef17))
+    (pin "2" (uuid b3cabb37-4068-4e8f-95e7-e2903aef9324))
     (instances
       (project "Distributor"
         (path "/3f67d80a-1b5b-4b57-a63e-46eb7de4787a/d071538b-874a-4835-97d2-570c76260972"
@@ -3425,7 +3425,7 @@
     (property "Reference" "C21" (at 90.17 149.86 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
-    (property "Value" "100n" (at 90.17 152.4 0)
+    (property "Value" "2.2u" (at 90.17 152.4 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Footprint" "Capacitor_SMD:C_0603_1608Metric" (at 92.3798 154.94 0)
