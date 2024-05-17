@@ -136,6 +136,12 @@ int main()
   // HAL_NVIC_SetPriority(TIM3_IRQn, 1, 0);
   // HAL_NVIC_EnableIRQ(TIM3_IRQn);
 
+  for (int i = 0; i < 25; i++)
+    for (int j = 0; j < N_SUSPEND / 2; j++)
+      spi_rx_buf[i * N_SUSPEND / 2 + j] =
+        ((i + j) % 5 == 0 ? 0xf : (i + j) % 5 - 1) * 0x11;
+  process_lights();
+
   // ======== SPI2 (PB9 CS, PB8 SCK, PB7 MOSI) ========
   gpio_init.Pin = GPIO_PIN_7 | GPIO_PIN_8;
   gpio_init.Mode = GPIO_MODE_AF_PP;
@@ -207,6 +213,8 @@ int main()
   int count = 0;
   int phase = 0;
 
+  HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 0);
+
   uint32_t tick = HAL_GetTick();
 
   while (1) {
@@ -244,7 +252,7 @@ int main()
 
     if (++count % 50 == 0) {
       if (count == 100) count = 0;
-      HAL_GPIO_TogglePin(GPIOF, GPIO_PIN_0);
+      HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, count == 0 ? 0 : 1);
     }
   }
 
