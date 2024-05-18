@@ -331,6 +331,7 @@ if (0) {
   HAL_GPIO_Init(GPIOE, &gpio_init);
 
   // ======== DCMI ========
+  __HAL_RCC_DCMI_CLK_ENABLE();
   dcmi = (DCMI_HandleTypeDef){
     .Instance = DCMI,
     .Init = {
