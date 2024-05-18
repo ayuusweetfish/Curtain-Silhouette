@@ -52,6 +52,11 @@ extern uint32_t _etext;
 #define SCRATCH_START_ADDR  ((CODE_END_ADDR + FLASH_PAGE_SIZE - 1) & ~(FLASH_PAGE_SIZE - 1))
 #define SCRATCH_END_ADDR    0x08020000
 
+SPI_HandleTypeDef spi2;
+
+#define N_SUSPEND 200
+uint8_t spi_tx_buf[25 * N_SUSPEND / 2];
+
 int main()
 {
   HAL_Init();
@@ -91,7 +96,8 @@ int main()
   clk_init.ClockType =
     RCC_CLOCKTYPE_SYSCLK |
     RCC_CLOCKTYPE_HCLK |
-    RCC_CLOCKTYPE_PCLK1;
+    RCC_CLOCKTYPE_PCLK1 |
+    RCC_CLOCKTYPE_PCLK2;
   clk_init.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK; // 168 MHz
   clk_init.AHBCLKDivider = RCC_SYSCLK_DIV1;
   clk_init.APB1CLKDivider = RCC_HCLK_DIV1;
@@ -101,6 +107,39 @@ int main()
   // swv_printf("Sys clock = %u\n", HAL_RCC_GetSysClockFreq());
 
   HAL_NVIC_SetPriority(SysTick_IRQn, 1, 0);
+
+  // ======== SPI2 (PB12 CS, PB13 SCK, PB15 MOSI) ========
+  gpio_init.Pin = GPIO_PIN_13 | GPIO_PIN_15;
+  gpio_init.Mode = GPIO_MODE_AF_PP;
+  gpio_init.Alternate = GPIO_AF5_SPI2;
+  gpio_init.Pull = GPIO_NOPULL;
+  gpio_init.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(GPIOB, &gpio_init);
+
+  gpio_init.Pin = GPIO_PIN_12;
+  gpio_init.Mode = GPIO_MODE_OUTPUT_PP;
+  gpio_init.Pull = GPIO_NOPULL;
+  gpio_init.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(GPIOB, &gpio_init);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
+
+  __HAL_RCC_SPI2_CLK_ENABLE();
+  spi2 = (SPI_HandleTypeDef){
+    .Instance = SPI2,
+    .Init = (SPI_InitTypeDef){
+      .Mode = SPI_MODE_MASTER,
+      .Direction = SPI_DIRECTION_2LINES,
+      .DataSize = SPI_DATASIZE_8BIT,
+      .CLKPolarity = SPI_POLARITY_LOW,  // CPOL = 0
+      .CLKPhase = SPI_PHASE_1EDGE,      // CPHA = 0
+      .NSS = SPI_NSS_SOFT,
+      .BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8, // 21 MHz
+      .FirstBit = SPI_FIRSTBIT_MSB,
+      .TIMode = SPI_TIMODE_DISABLE,
+      .CRCCalculation = SPI_CRCCALCULATION_DISABLE,
+    },
+  };
+  HAL_SPI_Init(&spi2);
 
   // Act LEDs
   gpio_init.Pull = GPIO_NOPULL;
@@ -113,6 +152,10 @@ int main()
   while (1) {
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); HAL_Delay(200);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1); HAL_Delay(200);
+
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);
+    int result = HAL_SPI_Transmit(&spi2, spi_tx_buf, 25 * N_SUSPEND / 2, 1000);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
   }
 }
 
