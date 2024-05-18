@@ -54,6 +54,8 @@ extern uint32_t _etext;
 
 SPI_HandleTypeDef spi2;
 I2C_HandleTypeDef i2c2;
+DMA_HandleTypeDef dma2_st1_ch1;
+DCMI_HandleTypeDef dcmi;
 
 #define N_SUSPEND 200
 uint8_t spi_tx_buf[25 * N_SUSPEND / 2];
@@ -183,11 +185,75 @@ int main()
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x70, I2C_MEMADD_SIZE_8BIT, &test_pattern_x, 1, 1000);
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x71, I2C_MEMADD_SIZE_8BIT, &test_pattern_y, 1, 1000);
 */
+  uint8_t com10 = 0b01000000; // HREF changes to HSYNC
+  HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x15, I2C_MEMADD_SIZE_8BIT, &com10, 1, 1000);
   swv_printf("err %d\n", i2c2.ErrorCode);
 
   if (i2c2.ErrorCode != 0) while (1) {
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1); HAL_Delay(200);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); HAL_Delay(200);
+  }
+
+  // ======== DMA (DMA2 Stream 1 Channel 1) ========
+  // For DCMI
+  // This is not arbitrary as 'F4 does not have DMAMUX
+  // Ref. AN4031 (Rev 3) p. 9 Tab. 2
+  __HAL_RCC_DMA2_CLK_ENABLE();
+  dma2_st1_ch1 = (DMA_HandleTypeDef){
+    .Instance = DMA2_Stream1,
+    .Init = {
+      .Channel = DMA_CHANNEL_1,
+      .Direction = DMA_PERIPH_TO_MEMORY,
+      .PeriphInc = DMA_PINC_DISABLE,
+      .MemInc = DMA_MINC_ENABLE,
+      .PeriphDataAlignment = DMA_PDATAALIGN_BYTE,
+      .MemDataAlignment = DMA_MDATAALIGN_BYTE,
+      .Mode = DMA_NORMAL,
+      .Priority = DMA_PRIORITY_HIGH,
+      .FIFOMode = DMA_FIFOMODE_DISABLE,
+    },
+  };
+  HAL_DMA_Init(&dma2_st1_ch1);
+
+  HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 2, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
+
+  // ======== DCMI ========
+  dcmi = (DCMI_HandleTypeDef){
+    .Instance = DCMI,
+    .Init = {
+      .SynchroMode = DCMI_SYNCHRO_HARDWARE,
+      .PCKPolarity = DCMI_PCKPOLARITY_RISING,
+        // RM0090 (Rev 20) p. 471: "[PCKPOL] configures the capture edge of the pixel clock"
+      .VSPolarity = DCMI_VSPOLARITY_HIGH,
+      .HSPolarity = DCMI_HSPOLARITY_LOW,
+      .CaptureRate = DCMI_CR_ALL_FRAME,
+      .ExtendedDataMode = DCMI_EXTEND_DATA_8B,
+      .JPEGMode = DCMI_JPEG_DISABLE,
+    },
+  };
+  HAL_DCMI_Init(&dcmi);
+  __HAL_LINKDMA(&dcmi, DMA_Handle, dma2_st1_ch1);
+
+  HAL_NVIC_SetPriority(DCMI_IRQn, 2, 1);
+  HAL_NVIC_EnableIRQ(DCMI_IRQn);
+
+  static uint8_t buf[20000] = { 0 };
+  HAL_DCMI_Start_DMA(&dcmi, DCMI_MODE_SNAPSHOT, (uint32_t)&buf[0], 20000);
+  // __HAL_DMA_ENABLE_IT(&dma2_st1_ch1, DMA_IT_TC | DMA_IT_HT);
+  // HAL_DMA_Start_IT(&dma2_st1_ch1, (uint32_t)&DCMI->DR, (uint32_t)&buf[0], 200);
+
+  while (1) {
+    swv_printf("CR %08x, NDT %08x, PA %08x, M0A %08x, M1A %08x | buf[0] %02x DCMI DR %08x\n",
+      DMA2_Stream1->CR,
+      DMA2_Stream1->NDTR,
+      DMA2_Stream1->PAR,
+      DMA2_Stream1->M0AR,
+      DMA2_Stream1->M1AR,
+      (unsigned)buf[0],
+      DCMI->DR
+    );
+    HAL_Delay(300);
   }
 
   // Test
@@ -232,30 +298,13 @@ void SysTick_Handler()
   HAL_SYSTICK_IRQHandler();
 }
 
+void DMA2_Stream1_IRQHandler() {
+  // HAL_DMA_IRQHandler(&dma2_st1_ch1);
+  while (1) { }
+}
+void DCMI_IRQHandler() {
+  while (1) { }
+}
+
 void NMI_Handler() { while (1) { } }
 void HardFault_Handler() { while (1) { } }
-void SVC_Handler() { while (1) { } }
-void PendSV_Handler() { while (1) { } }
-void WWDG_IRQHandler() { while (1) { } }
-void RTC_TAMP_IRQHandler() { while (1) { } }
-void FLASH_IRQHandler() { while (1) { } }
-void RCC_IRQHandler() { while (1) { } }
-void EXTI0_1_IRQHandler() { while (1) { } }
-void EXTI2_3_IRQHandler() { while (1) { } }
-void EXTI4_15_IRQHandler() { while (1) { } }
-void DMA1_Channel1_IRQHandler() { while (1) { } }
-void DMA1_Channel2_3_IRQHandler() { while (1) { } }
-void DMA1_Ch4_5_DMAMUX1_OVR_IRQHandler() { while (1) { } }
-void ADC1_IRQHandler() { while (1) { } }
-void TIM1_BRK_UP_TRG_COM_IRQHandler() { while (1) { } }
-void TIM1_CC_IRQHandler() { while (1) { } }
-void TIM3_IRQHandler() { while (1) { } }
-void TIM14_IRQHandler() { while (1) { } }
-void TIM16_IRQHandler() { while (1) { } }
-void TIM17_IRQHandler() { while (1) { } }
-void I2C1_IRQHandler() { while (1) { } }
-void I2C2_IRQHandler() { while (1) { } }
-void SPI1_IRQHandler() { while (1) { } }
-void SPI2_IRQHandler() { while (1) { } }
-void USART1_IRQHandler() { while (1) { } }
-void USART2_IRQHandler() { while (1) { } }
