@@ -151,10 +151,24 @@ int main()
   HAL_GPIO_Init(GPIOA, &gpio_init);
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0 | GPIO_PIN_1, 1);
 
+  // ======== Camera controls ========
+  // PA2 CAM_PWDN (active high), PA3 CAM_RESET (active low)
+  gpio_init = (GPIO_InitTypeDef){
+    .Pin = GPIO_PIN_2 | GPIO_PIN_3,
+    .Mode = GPIO_MODE_OUTPUT_PP,
+    .Speed = GPIO_SPEED_FREQ_HIGH,
+  };
+  HAL_GPIO_Init(GPIOA, &gpio_init);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, 0);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, 0);  // Reset
+
   // ======== MCO (PB8 MCO1) ========
   // GPIO initialisation is done by `HAL_RCC_MCOConfig`
   // 168 MHz / 4 = 42 MHz
   HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_PLLCLK, RCC_MCODIV_4);
+
+  HAL_Delay(2);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, 1);  // Release reset
 
   // ======== I2C2 (PB10 SCL, PB11 SDA) ========
   gpio_init = (GPIO_InitTypeDef){
@@ -178,6 +192,8 @@ int main()
   HAL_I2C_Init(&i2c2);
 
   uint8_t clkrc = 0b10000111; // Prescale by 8
+  HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x11, I2C_MEMADD_SIZE_8BIT, &clkrc, 1, 1000);
+  // First write gets ERROR_AF?
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x11, I2C_MEMADD_SIZE_8BIT, &clkrc, 1, 1000);
 /*
   uint8_t test_pattern_x = 0b10111010;
@@ -204,7 +220,9 @@ int main()
     .Init = {
       .Channel = DMA_CHANNEL_1,
       .Direction = DMA_PERIPH_TO_MEMORY,
+      // .Direction = DMA_MEMORY_TO_MEMORY,
       .PeriphInc = DMA_PINC_DISABLE,
+      // .PeriphInc = DMA_PINC_ENABLE,
       .MemInc = DMA_MINC_ENABLE,
       .PeriphDataAlignment = DMA_PDATAALIGN_BYTE,
       .MemDataAlignment = DMA_MDATAALIGN_BYTE,
@@ -217,6 +235,100 @@ int main()
 
   HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
+
+if (0) {
+  // Test read
+  // PA4 HSYNC, PA6 PIXCLK
+  gpio_init = (GPIO_InitTypeDef){
+    .Pin = GPIO_PIN_4 | GPIO_PIN_6,
+    .Mode = GPIO_MODE_INPUT,
+    .Speed = GPIO_SPEED_FREQ_VERY_HIGH,
+  };
+  // PB7 VSYNC
+  HAL_GPIO_Init(GPIOA, &gpio_init);
+  gpio_init = (GPIO_InitTypeDef){
+    .Pin = GPIO_PIN_7,
+    .Mode = GPIO_MODE_INPUT,
+    .Speed = GPIO_SPEED_FREQ_VERY_HIGH,
+  };
+  HAL_GPIO_Init(GPIOB, &gpio_init);
+  while (1) {
+    uint32_t t0 = HAL_GetTick();
+#if 0
+  #define COUNT 1000000 // (510 * 784)
+  #define PORT GPIOA
+  #define PIN GPIO_PIN_6
+  #define NAME "PIXCLK"
+  // 190 ms
+#elif 0
+  #define COUNT 10000
+  #define PORT GPIOA
+  #define PIN GPIO_PIN_4
+  #define NAME "HSYNC"
+  // 2986 ms
+#else
+  #define COUNT 10
+  #define PORT GPIOB
+  #define PIN GPIO_PIN_7
+  #define NAME "VSYNC"
+  // 1391 ms
+#endif
+    for (int i = 0; i < COUNT; i++) {
+      while ((PORT->IDR & PIN) != 0) { }
+      while ((PORT->IDR & PIN) == 0) { }
+    }
+    swv_printf(NAME " toggle %u times, %u ms\n", COUNT, HAL_GetTick() - t0);
+  }
+  while (1) {
+    while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7) == 0) { }
+    while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7) == 1) { }
+    /* swv_printf("%d %d %d\n",
+      HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4),
+      HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6),
+      HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7)); */
+    int count = 0;
+  /*
+    while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7) == 0) {
+      while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == 1) { }
+      while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == 0) { }
+      count += 1;
+    }
+    swv_printf("HSYNC count %d\n", count);  // 508 = 510 - 2
+  */
+    while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7) == 0) {
+      while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6) == 1) { }
+      while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6) == 0) { }
+      count += 1;
+    }
+    swv_printf("PIXCLK count %d\n", count);
+  }
+}
+
+  // ======== DCMI GPIOs ========
+  // PA4 HSYNC, PA6 PIXCLK, PA9 D0, PA10 D1
+  gpio_init = (GPIO_InitTypeDef){
+    .Pin = GPIO_PIN_4 | GPIO_PIN_6 | GPIO_PIN_9 | GPIO_PIN_10,
+    .Mode = GPIO_MODE_AF_PP,
+    .Alternate = GPIO_AF13_DCMI,
+    .Speed = GPIO_SPEED_FREQ_VERY_HIGH,
+  };
+  HAL_GPIO_Init(GPIOA, &gpio_init);
+  // PB6 D5, PB7 VSYNC, PB8 D6, PB9 D7
+  gpio_init = (GPIO_InitTypeDef){
+    .Pin = GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9,
+    .Mode = GPIO_MODE_AF_PP,
+    .Alternate = GPIO_AF13_DCMI,
+    .Speed = GPIO_SPEED_FREQ_VERY_HIGH,
+  };
+  HAL_GPIO_Init(GPIOB, &gpio_init);
+  // PE0 D2, PE1 D3, PE4 D4
+  gpio_init = (GPIO_InitTypeDef){
+    .Pin = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_4,
+    .Mode = GPIO_MODE_AF_PP,
+    .Alternate = GPIO_AF13_DCMI,
+    .Speed = GPIO_SPEED_FREQ_VERY_HIGH,
+  };
+  HAL_GPIO_Init(GPIOE, &gpio_init);
 
   // ======== DCMI ========
   dcmi = (DCMI_HandleTypeDef){
@@ -238,20 +350,32 @@ int main()
   HAL_NVIC_SetPriority(DCMI_IRQn, 2, 1);
   HAL_NVIC_EnableIRQ(DCMI_IRQn);
 
-  static uint8_t buf[20000] = { 0 };
+  DCMI->CR |= 1;
+  DCMI->IER |= 1;
+  // 00000000??
+  swv_printf("DCMI CR %08x SR %08x IER %08x\n", DCMI->CR, DCMI->SR, DCMI->IER);
+
+  static uint8_t buf[20000] = { 0xaa };
   HAL_DCMI_Start_DMA(&dcmi, DCMI_MODE_SNAPSHOT, (uint32_t)&buf[0], 20000);
   // __HAL_DMA_ENABLE_IT(&dma2_st1_ch1, DMA_IT_TC | DMA_IT_HT);
   // HAL_DMA_Start_IT(&dma2_st1_ch1, (uint32_t)&DCMI->DR, (uint32_t)&buf[0], 200);
 
+  uint8_t qwq[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+  // HAL_DMA_Start_IT(&dma2_st1_ch1, (uint32_t)&qwq[0], (uint32_t)&buf[0], 8);
+  // CR 02020697, NDT 00000003, PA 2001ff8c, M0A 20000090, M1A 00000000 | buf[0] 01 DCMI DR 00000000
+  // CR 02020686, NDT 00000000, PA 2001ff8c, M0A 20000090, M1A 00000000 | buf[0] 01 DCMI DR 00000000
+
   while (1) {
-    swv_printf("CR %08x, NDT %08x, PA %08x, M0A %08x, M1A %08x | buf[0] %02x DCMI DR %08x\n",
+    // 02020417, NDT 00004e20, PA 50050028, M0A 20000090, M1A 00000000 | buf[0] 00 | DCMI DR 00000000 CR 00000000
+    swv_printf("CR %08x, NDT %08x, PA %08x, M0A %08x, M1A %08x | buf[0] %02x | DCMI DR %08x CR %08x\n",
       DMA2_Stream1->CR,
       DMA2_Stream1->NDTR,
       DMA2_Stream1->PAR,
       DMA2_Stream1->M0AR,
       DMA2_Stream1->M1AR,
       (unsigned)buf[0],
-      DCMI->DR
+      DCMI->DR,
+      DCMI->CR
     );
     HAL_Delay(300);
   }
@@ -299,7 +423,7 @@ void SysTick_Handler()
 }
 
 void DMA2_Stream1_IRQHandler() {
-  // HAL_DMA_IRQHandler(&dma2_st1_ch1);
+  HAL_DMA_IRQHandler(&dma2_st1_ch1);
   while (1) { }
 }
 void DCMI_IRQHandler() {
