@@ -92,10 +92,13 @@ int main()
     RCC_CLOCKTYPE_SYSCLK |
     RCC_CLOCKTYPE_HCLK |
     RCC_CLOCKTYPE_PCLK1;
-  clk_init.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK; // 64 MHz
+  clk_init.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK; // 168 MHz
   clk_init.AHBCLKDivider = RCC_SYSCLK_DIV1;
   clk_init.APB1CLKDivider = RCC_HCLK_DIV1;
-  HAL_RCC_ClockConfig(&clk_init, FLASH_LATENCY_2);
+  clk_init.APB2CLKDivider = RCC_HCLK_DIV1;
+  HAL_RCC_ClockConfig(&clk_init, FLASH_LATENCY_5);  // AN3988 (Rev 2) p. 9 Tab. 2
+
+  // swv_printf("Sys clock = %u\n", HAL_RCC_GetSysClockFreq());
 
   HAL_NVIC_SetPriority(SysTick_IRQn, 1, 0);
 
