@@ -53,6 +53,7 @@ extern uint32_t _etext;
 #define SCRATCH_END_ADDR    0x08020000
 
 SPI_HandleTypeDef spi2;
+I2C_HandleTypeDef i2c2;
 
 #define N_SUSPEND 200
 uint8_t spi_tx_buf[25 * N_SUSPEND / 2];
@@ -65,8 +66,7 @@ int main()
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOD_CLK_ENABLE();
-  __HAL_RCC_GPIOF_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   GPIO_InitTypeDef gpio_init;
 
   // SWD (PA13, PA14)
@@ -148,6 +148,47 @@ int main()
   gpio_init.Mode = GPIO_MODE_OUTPUT_PP;
   HAL_GPIO_Init(GPIOA, &gpio_init);
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0 | GPIO_PIN_1, 1);
+
+  // ======== MCO (PB8 MCO1) ========
+  // GPIO initialisation is done by `HAL_RCC_MCOConfig`
+  // 168 MHz / 4 = 42 MHz
+  HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_PLLCLK, RCC_MCODIV_4);
+
+  // ======== I2C2 (PB10 SCL, PB11 SDA) ========
+  gpio_init = (GPIO_InitTypeDef){
+    .Pin = GPIO_PIN_10 | GPIO_PIN_11,
+    .Mode = GPIO_MODE_AF_OD,
+    .Alternate = GPIO_AF4_I2C2,
+    .Speed = GPIO_SPEED_FREQ_HIGH,
+  };
+  HAL_GPIO_Init(GPIOB, &gpio_init);
+
+  __HAL_RCC_I2C2_CLK_ENABLE();
+  i2c2 = (I2C_HandleTypeDef){
+    .Instance = I2C2,
+    .Init = {
+      .ClockSpeed = 100000,
+      .DutyCycle = I2C_DUTYCYCLE_2,
+      .OwnAddress1 = 0x00,
+      .AddressingMode = I2C_ADDRESSINGMODE_7BIT,
+    },
+  };
+  HAL_I2C_Init(&i2c2);
+
+  uint8_t clkrc = 0b10000111; // Prescale by 8
+  HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x11, I2C_MEMADD_SIZE_8BIT, &clkrc, 1, 1000);
+/*
+  uint8_t test_pattern_x = 0b10111010;
+  uint8_t test_pattern_y = 0b00110101;  // 8-bar color bar
+  HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x70, I2C_MEMADD_SIZE_8BIT, &test_pattern_x, 1, 1000);
+  HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x71, I2C_MEMADD_SIZE_8BIT, &test_pattern_y, 1, 1000);
+*/
+  swv_printf("err %d\n", i2c2.ErrorCode);
+
+  if (i2c2.ErrorCode != 0) while (1) {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1); HAL_Delay(200);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); HAL_Delay(200);
+  }
 
   // Test
 
