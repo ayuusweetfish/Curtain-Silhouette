@@ -228,7 +228,8 @@ int main()
       .MemDataAlignment = DMA_MDATAALIGN_BYTE,
       .Mode = DMA_NORMAL,
       .Priority = DMA_PRIORITY_HIGH,
-      .FIFOMode = DMA_FIFOMODE_DISABLE,
+      // .FIFOMode = DMA_FIFOMODE_ENABLE,
+      // .FIFOThreshold = DMA_FIFO_THRESHOLD_1QUARTERFULL,
     },
   };
   HAL_DMA_Init(&dma2_st1_ch1);
@@ -361,22 +362,25 @@ if (0) {
   // __HAL_DMA_ENABLE_IT(&dma2_st1_ch1, DMA_IT_TC | DMA_IT_HT);
   // HAL_DMA_Start_IT(&dma2_st1_ch1, (uint32_t)&DCMI->DR, (uint32_t)&buf[0], 200);
 
-  uint8_t qwq[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+  // uint8_t qwq[8] = {1, 2, 3, 4, 5, 6, 7, 8};
   // HAL_DMA_Start_IT(&dma2_st1_ch1, (uint32_t)&qwq[0], (uint32_t)&buf[0], 8);
   // CR 02020697, NDT 00000003, PA 2001ff8c, M0A 20000090, M1A 00000000 | buf[0] 01 DCMI DR 00000000
   // CR 02020686, NDT 00000000, PA 2001ff8c, M0A 20000090, M1A 00000000 | buf[0] 01 DCMI DR 00000000
 
   while (1) {
-    // 02020417, NDT 00004e20, PA 50050028, M0A 20000090, M1A 00000000 | buf[0] 00 | DCMI DR 00000000 CR 00000000
-    swv_printf("CR %08x, NDT %08x, PA %08x, M0A %08x, M1A %08x | buf[0] %02x | DCMI DR %08x CR %08x\n",
+    // CR 02020417, NDT 00004e20, PA 50050028, M0A 20000008, M1A 00000000, LISR 00000000 | buf[0] aa | DCMI DR 00000000 CR 000040a3 MIS 00000000
+    // CR 02020412, NDT 00004e1f, PA 50050028, M0A 20000008, M1A 00000000, LISR 00000000 | buf[0] aa | DCMI DR 00000000 CR 000040a2 MIS 00000000
+    swv_printf("CR %08x, NDT %08x, PA %08x, M0A %08x, M1A %08x, LISR %08x | buf[0] %02x | DCMI DR %08x CR %08x MIS %08x\n",
       DMA2_Stream1->CR,
       DMA2_Stream1->NDTR,
       DMA2_Stream1->PAR,
       DMA2_Stream1->M0AR,
       DMA2_Stream1->M1AR,
+      DMA2->LISR,
       (unsigned)buf[0],
       DCMI->DR,
-      DCMI->CR
+      DCMI->CR,
+      DCMI->MISR
     );
     HAL_Delay(300);
   }
@@ -424,11 +428,21 @@ void SysTick_Handler()
 }
 
 void DMA2_Stream1_IRQHandler() {
+  swv_printf("\nCR %08x, NDT %08x, PA %08x, M0A %08x, M1A %08x, LISR %08x | ---DMA2-- | DCMI DR %08x CR %08x MIS %08x\n",
+    DMA2_Stream1->CR,
+    DMA2_Stream1->NDTR,
+    DMA2_Stream1->PAR,
+    DMA2_Stream1->M0AR,
+    DMA2_Stream1->M1AR,
+    DMA2->LISR,
+    DCMI->DR,
+    DCMI->CR,
+    DCMI->MISR
+  );
   HAL_DMA_IRQHandler(&dma2_st1_ch1);
-  while (1) { }
 }
 void DCMI_IRQHandler() {
-  while (1) { }
+  HAL_DCMI_IRQHandler(&dcmi);
 }
 
 void NMI_Handler() { while (1) { } }
