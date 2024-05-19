@@ -226,10 +226,12 @@ int main()
       .MemInc = DMA_MINC_ENABLE,
       .PeriphDataAlignment = DMA_PDATAALIGN_BYTE,
       .MemDataAlignment = DMA_MDATAALIGN_BYTE,
-      .Mode = DMA_NORMAL,
+      .Mode = DMA_CIRCULAR,
       .Priority = DMA_PRIORITY_HIGH,
-      // .FIFOMode = DMA_FIFOMODE_ENABLE,
-      // .FIFOThreshold = DMA_FIFO_THRESHOLD_1QUARTERFULL,
+      .FIFOMode = DMA_FIFOMODE_ENABLE,
+      .FIFOThreshold = DMA_FIFO_THRESHOLD_FULL,
+      .MemBurst = DMA_PBURST_SINGLE,
+      .PeriphBurst = DMA_MBURST_INC4,
     },
   };
   HAL_DMA_Init(&dma2_st1_ch1);
