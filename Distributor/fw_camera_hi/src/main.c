@@ -204,6 +204,10 @@ int main()
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x70, I2C_MEMADD_SIZE_8BIT, &test_pattern_x, 1, 1000);
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x71, I2C_MEMADD_SIZE_8BIT, &test_pattern_y, 1, 1000);
 */
+  uint8_t com3 = 0b00001000;  // Scale enable
+  uint8_t com7 = 0b00010000;  // QVGA
+  // HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x0c, I2C_MEMADD_SIZE_8BIT, &com3, 1, 1000);
+  // HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x12, I2C_MEMADD_SIZE_8BIT, &com7, 1, 1000);
   swv_printf("err %d\n", i2c2.ErrorCode);
 
   if (i2c2.ErrorCode != 0) while (1) {
@@ -283,8 +287,8 @@ int main()
   HAL_DCMI_Init(&dcmi);
   __HAL_LINKDMA(&dcmi, DMA_Handle, dma2_st1_ch1);
 
-  HAL_DCMI_ConfigCrop(&dcmi, 0, 0, 640 * 2, 480);
-  HAL_DCMI_EnableCrop(&dcmi);
+  // HAL_DCMI_ConfigCrop(&dcmi, 0, 0, 640 * 2, 480);
+  // HAL_DCMI_EnableCrop(&dcmi);
 
   HAL_NVIC_SetPriority(DCMI_IRQn, 2, 1);
   HAL_NVIC_EnableIRQ(DCMI_IRQn);
