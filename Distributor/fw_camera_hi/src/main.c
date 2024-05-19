@@ -224,9 +224,9 @@ int main()
       .PeriphInc = DMA_PINC_DISABLE,
       // .PeriphInc = DMA_PINC_ENABLE,
       .MemInc = DMA_MINC_ENABLE,
-      .PeriphDataAlignment = DMA_PDATAALIGN_BYTE,
-      .MemDataAlignment = DMA_MDATAALIGN_BYTE,
-      .Mode = DMA_CIRCULAR,
+      .PeriphDataAlignment = DMA_PDATAALIGN_WORD,
+      .MemDataAlignment = DMA_MDATAALIGN_WORD,
+      .Mode = DMA_NORMAL,
       .Priority = DMA_PRIORITY_HIGH,
       .FIFOMode = DMA_FIFOMODE_ENABLE,
       .FIFOThreshold = DMA_FIFO_THRESHOLD_FULL,
@@ -359,8 +359,9 @@ if (0) {
   // 00000000??
   swv_printf("DCMI CR %08x SR %08x IER %08x\n", DCMI->CR, DCMI->SR, DCMI->IER);
 
-  static uint8_t buf[20000] = { 0xaa };
-  HAL_DCMI_Start_DMA(&dcmi, DCMI_MODE_SNAPSHOT, (uint32_t)&buf[0], 20000);
+  static uint32_t buf[5000] = { 0xaa };
+  for (int i = 0; i < 5000; i++) buf[i] = i;
+  HAL_DCMI_Start_DMA(&dcmi, DCMI_MODE_SNAPSHOT, (uint32_t)&buf[0], 5000);
   // __HAL_DMA_ENABLE_IT(&dma2_st1_ch1, DMA_IT_TC | DMA_IT_HT);
   // HAL_DMA_Start_IT(&dma2_st1_ch1, (uint32_t)&DCMI->DR, (uint32_t)&buf[0], 200);
 
@@ -372,14 +373,18 @@ if (0) {
   while (1) {
     // CR 02020417, NDT 00004e20, PA 50050028, M0A 20000008, M1A 00000000, LISR 00000000 | buf[0] aa | DCMI DR 00000000 CR 000040a3 MIS 00000000
     // CR 02020412, NDT 00004e1f, PA 50050028, M0A 20000008, M1A 00000000, LISR 00000000 | buf[0] aa | DCMI DR 00000000 CR 000040a2 MIS 00000000
-    swv_printf("CR %08x, NDT %08x, PA %08x, M0A %08x, M1A %08x, LISR %08x | buf[0] %02x | DCMI DR %08x CR %08x MIS %08x\n",
+    uint32_t sum = 0;
+    for (int i = 0; i < 5000; i++) sum += buf[i];
+    swv_printf("CR %08x, NDT %08x, PA %08x, M0A %08x, M1A %08x, LISR %08x, ErrorCode %08x | buf[0] %02x sum %08x | DCMI DR %08x CR %08x MIS %08x\n",
       DMA2_Stream1->CR,
       DMA2_Stream1->NDTR,
       DMA2_Stream1->PAR,
       DMA2_Stream1->M0AR,
       DMA2_Stream1->M1AR,
       DMA2->LISR,
+      dma2_st1_ch1.ErrorCode,
       (unsigned)buf[0],
+      sum,
       DCMI->DR,
       DCMI->CR,
       DCMI->MISR
