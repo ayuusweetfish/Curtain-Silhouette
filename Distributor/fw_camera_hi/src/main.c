@@ -60,6 +60,8 @@ DCMI_HandleTypeDef dcmi;
 #define N_SUSPEND 200
 uint8_t spi_tx_buf[25 * N_SUSPEND / 2];
 
+static int line_count = 0;
+
 int main()
 {
   HAL_Init();
@@ -201,8 +203,8 @@ int main()
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x70, I2C_MEMADD_SIZE_8BIT, &test_pattern_x, 1, 1000);
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x71, I2C_MEMADD_SIZE_8BIT, &test_pattern_y, 1, 1000);
 */
-  uint8_t com10 = 0b01000000; // HREF changes to HSYNC
-  HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x15, I2C_MEMADD_SIZE_8BIT, &com10, 1, 1000);
+  // uint8_t com10 = 0b01000000; // HREF changes to HSYNC
+  // HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x15, I2C_MEMADD_SIZE_8BIT, &com10, 1, 1000);
   swv_printf("err %d\n", i2c2.ErrorCode);
 
   if (i2c2.ErrorCode != 0) while (1) {
@@ -226,7 +228,7 @@ int main()
       .MemInc = DMA_MINC_ENABLE,
       .PeriphDataAlignment = DMA_PDATAALIGN_WORD,
       .MemDataAlignment = DMA_MDATAALIGN_WORD,
-      .Mode = DMA_NORMAL,
+      .Mode = DMA_CIRCULAR,
       .Priority = DMA_PRIORITY_HIGH,
       .FIFOMode = DMA_FIFOMODE_ENABLE,
       .FIFOThreshold = DMA_FIFO_THRESHOLD_FULL,
@@ -351,31 +353,25 @@ if (0) {
   HAL_DCMI_Init(&dcmi);
   __HAL_LINKDMA(&dcmi, DMA_Handle, dma2_st1_ch1);
 
+  // HAL_DCMI_ConfigCrop(&dcmi, 0, 0, 640 * 2, 480 * 2);
+  // HAL_DCMI_EnableCrop(&dcmi);
+
   HAL_NVIC_SetPriority(DCMI_IRQn, 2, 1);
   HAL_NVIC_EnableIRQ(DCMI_IRQn);
 
-  DCMI->CR |= 1;
-  DCMI->IER |= 1;
-  // 00000000??
-  swv_printf("DCMI CR %08x SR %08x IER %08x\n", DCMI->CR, DCMI->SR, DCMI->IER);
+  static uint32_t buf[15000] = { 0xaa };
+  for (int i = 0; i < 15000; i++) buf[i] = i;
+  HAL_DCMI_Start_DMA(&dcmi, DCMI_MODE_CONTINUOUS, (uint32_t)&buf[0], 15000);
+  // Snapshot takes 3600 words = 14400 bytes = 7200 pixels
+  // HAL_DCMI_Start_DMA(&dcmi, DCMI_MODE_SNAPSHOT, (uint32_t)&buf[0], 15000);
 
-  static uint32_t buf[5000] = { 0xaa };
-  for (int i = 0; i < 5000; i++) buf[i] = i;
-  HAL_DCMI_Start_DMA(&dcmi, DCMI_MODE_SNAPSHOT, (uint32_t)&buf[0], 5000);
   // __HAL_DMA_ENABLE_IT(&dma2_st1_ch1, DMA_IT_TC | DMA_IT_HT);
   // HAL_DMA_Start_IT(&dma2_st1_ch1, (uint32_t)&DCMI->DR, (uint32_t)&buf[0], 200);
 
-  // uint8_t qwq[8] = {1, 2, 3, 4, 5, 6, 7, 8};
-  // HAL_DMA_Start_IT(&dma2_st1_ch1, (uint32_t)&qwq[0], (uint32_t)&buf[0], 8);
-  // CR 02020697, NDT 00000003, PA 2001ff8c, M0A 20000090, M1A 00000000 | buf[0] 01 DCMI DR 00000000
-  // CR 02020686, NDT 00000000, PA 2001ff8c, M0A 20000090, M1A 00000000 | buf[0] 01 DCMI DR 00000000
-
   while (1) {
-    // CR 02020417, NDT 00004e20, PA 50050028, M0A 20000008, M1A 00000000, LISR 00000000 | buf[0] aa | DCMI DR 00000000 CR 000040a3 MIS 00000000
-    // CR 02020412, NDT 00004e1f, PA 50050028, M0A 20000008, M1A 00000000, LISR 00000000 | buf[0] aa | DCMI DR 00000000 CR 000040a2 MIS 00000000
     uint32_t sum = 0;
-    for (int i = 0; i < 5000; i++) sum += buf[i];
-    swv_printf("CR %08x, NDT %08x, PA %08x, M0A %08x, M1A %08x, LISR %08x, ErrorCode %08x | buf[0] %02x sum %08x | DCMI DR %08x CR %08x MIS %08x\n",
+    for (int i = 0; i < 15000; i++) sum += ((buf[i] >> 24) & 0xff) + ((buf[i] >> 8) & 0xff);
+    swv_printf("CR %08x, NDT %08x, PA %08x, M0A %08x, M1A %08x, LISR %08x, ErrorCode %08x | buf[0] %02x sum %08x line_count %5d | DCMI DR %08x CR %08x MIS %08x\n",
       DMA2_Stream1->CR,
       DMA2_Stream1->NDTR,
       DMA2_Stream1->PAR,
@@ -383,8 +379,9 @@ if (0) {
       DMA2_Stream1->M1AR,
       DMA2->LISR,
       dma2_st1_ch1.ErrorCode,
-      (unsigned)buf[0],
+      (unsigned)((buf[0] >> 24) & 0xff),
       sum,
+      line_count,
       DCMI->DR,
       DCMI->CR,
       DCMI->MISR
@@ -435,6 +432,7 @@ void SysTick_Handler()
 }
 
 void DMA2_Stream1_IRQHandler() {
+if (0)
   swv_printf("\nCR %08x, NDT %08x, PA %08x, M0A %08x, M1A %08x, LISR %08x | ---DMA2-- | DCMI DR %08x CR %08x MIS %08x\n",
     DMA2_Stream1->CR,
     DMA2_Stream1->NDTR,
@@ -448,7 +446,16 @@ void DMA2_Stream1_IRQHandler() {
   );
   HAL_DMA_IRQHandler(&dma2_st1_ch1);
 }
+static volatile uint32_t mis[4800];
 void DCMI_IRQHandler() {
+  static int count = 0;
+  if (count < 4800) {
+    mis[count++] = DCMI->MISR;
+    // mis[count++] = DMA2_Stream1->NDTR;
+  } else {
+    // swv_printf("!\n");
+  }
+  if (DCMI->MISR & DCMI_MIS_LINE_MIS) line_count++;
   HAL_DCMI_IRQHandler(&dcmi);
 }
 
