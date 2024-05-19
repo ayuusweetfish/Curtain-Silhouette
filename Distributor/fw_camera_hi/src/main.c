@@ -61,6 +61,7 @@ DCMI_HandleTypeDef dcmi;
 uint8_t spi_tx_buf[25 * N_SUSPEND / 2];
 
 static int line_count = 0;
+static int frame_count = 0;
 
 int main()
 {
@@ -193,7 +194,7 @@ int main()
   };
   HAL_I2C_Init(&i2c2);
 
-  uint8_t clkrc = 0b10000111; // Prescale by 8
+  uint8_t clkrc = 0b10000011; // Prescale by 4
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x11, I2C_MEMADD_SIZE_8BIT, &clkrc, 1, 1000);
   // First write gets ERROR_AF?
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x11, I2C_MEMADD_SIZE_8BIT, &clkrc, 1, 1000);
@@ -203,8 +204,6 @@ int main()
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x70, I2C_MEMADD_SIZE_8BIT, &test_pattern_x, 1, 1000);
   HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x71, I2C_MEMADD_SIZE_8BIT, &test_pattern_y, 1, 1000);
 */
-  // uint8_t com10 = 0b01000000; // HREF changes to HSYNC
-  // HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x15, I2C_MEMADD_SIZE_8BIT, &com10, 1, 1000);
   swv_printf("err %d\n", i2c2.ErrorCode);
 
   if (i2c2.ErrorCode != 0) while (1) {
@@ -222,9 +221,7 @@ int main()
     .Init = {
       .Channel = DMA_CHANNEL_1,
       .Direction = DMA_PERIPH_TO_MEMORY,
-      // .Direction = DMA_MEMORY_TO_MEMORY,
       .PeriphInc = DMA_PINC_DISABLE,
-      // .PeriphInc = DMA_PINC_ENABLE,
       .MemInc = DMA_MINC_ENABLE,
       .PeriphDataAlignment = DMA_PDATAALIGN_WORD,
       .MemDataAlignment = DMA_MDATAALIGN_WORD,
@@ -240,74 +237,6 @@ int main()
 
   HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
-
-if (0) {
-  // Test read
-  // PA4 HSYNC, PA6 PIXCLK
-  gpio_init = (GPIO_InitTypeDef){
-    .Pin = GPIO_PIN_4 | GPIO_PIN_6,
-    .Mode = GPIO_MODE_INPUT,
-    .Speed = GPIO_SPEED_FREQ_VERY_HIGH,
-  };
-  // PB7 VSYNC
-  HAL_GPIO_Init(GPIOA, &gpio_init);
-  gpio_init = (GPIO_InitTypeDef){
-    .Pin = GPIO_PIN_7,
-    .Mode = GPIO_MODE_INPUT,
-    .Speed = GPIO_SPEED_FREQ_VERY_HIGH,
-  };
-  HAL_GPIO_Init(GPIOB, &gpio_init);
-  while (1) {
-    uint32_t t0 = HAL_GetTick();
-#if 0
-  #define COUNT 1000000 // (510 * 784)
-  #define PORT GPIOA
-  #define PIN GPIO_PIN_6
-  #define NAME "PIXCLK"
-  // 190 ms
-#elif 0
-  #define COUNT 10000
-  #define PORT GPIOA
-  #define PIN GPIO_PIN_4
-  #define NAME "HSYNC"
-  // 2986 ms
-#else
-  #define COUNT 10
-  #define PORT GPIOB
-  #define PIN GPIO_PIN_7
-  #define NAME "VSYNC"
-  // 1391 ms
-#endif
-    for (int i = 0; i < COUNT; i++) {
-      while ((PORT->IDR & PIN) != 0) { }
-      while ((PORT->IDR & PIN) == 0) { }
-    }
-    swv_printf(NAME " toggle %u times, %u ms\n", COUNT, HAL_GetTick() - t0);
-  }
-  while (1) {
-    while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7) == 0) { }
-    while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7) == 1) { }
-    /* swv_printf("%d %d %d\n",
-      HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4),
-      HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6),
-      HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7)); */
-    int count = 0;
-  /*
-    while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7) == 0) {
-      while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == 1) { }
-      while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == 0) { }
-      count += 1;
-    }
-    swv_printf("HSYNC count %d\n", count);  // 508 = 510 - 2
-  */
-    while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7) == 0) {
-      while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6) == 1) { }
-      while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6) == 0) { }
-      count += 1;
-    }
-    swv_printf("PIXCLK count %d\n", count);
-  }
-}
 
   // ======== DCMI GPIOs ========
   // PA4 HSYNC, PA6 PIXCLK, PA9 D0, PA10 D1
@@ -345,6 +274,7 @@ if (0) {
         // RM0090 (Rev 20) p. 471: "[PCKPOL] configures the capture edge of the pixel clock"
       .VSPolarity = DCMI_VSPOLARITY_HIGH,
       .HSPolarity = DCMI_HSPOLARITY_LOW,
+        // AN5020 (Rev 3) p. 27: "the data is not valid […] when VSYNC or HSYNC is at [active] level"
       .CaptureRate = DCMI_CR_ALL_FRAME,
       .ExtendedDataMode = DCMI_EXTEND_DATA_8B,
       .JPEGMode = DCMI_JPEG_DISABLE,
@@ -353,8 +283,8 @@ if (0) {
   HAL_DCMI_Init(&dcmi);
   __HAL_LINKDMA(&dcmi, DMA_Handle, dma2_st1_ch1);
 
-  // HAL_DCMI_ConfigCrop(&dcmi, 0, 0, 640 * 2, 480 * 2);
-  // HAL_DCMI_EnableCrop(&dcmi);
+  HAL_DCMI_ConfigCrop(&dcmi, 0, 0, 640 * 2, 480);
+  HAL_DCMI_EnableCrop(&dcmi);
 
   HAL_NVIC_SetPriority(DCMI_IRQn, 2, 1);
   HAL_NVIC_EnableIRQ(DCMI_IRQn);
@@ -365,13 +295,10 @@ if (0) {
   // Snapshot takes 3600 words = 14400 bytes = 7200 pixels
   // HAL_DCMI_Start_DMA(&dcmi, DCMI_MODE_SNAPSHOT, (uint32_t)&buf[0], 15000);
 
-  // __HAL_DMA_ENABLE_IT(&dma2_st1_ch1, DMA_IT_TC | DMA_IT_HT);
-  // HAL_DMA_Start_IT(&dma2_st1_ch1, (uint32_t)&DCMI->DR, (uint32_t)&buf[0], 200);
-
   while (1) {
     uint32_t sum = 0;
     for (int i = 0; i < 15000; i++) sum += ((buf[i] >> 24) & 0xff) + ((buf[i] >> 8) & 0xff);
-    swv_printf("CR %08x, NDT %08x, PA %08x, M0A %08x, M1A %08x, LISR %08x, ErrorCode %08x | buf[0] %02x sum %08x line_count %5d | DCMI DR %08x CR %08x MIS %08x\n",
+    swv_printf("CR %08x, NDT %08x, PA %08x, M0A %08x, M1A %08x, LISR %08x, ErrorCode %08x | buf[0] %02x sum %08x line_count %5d frame_count %5d | DCMI DR %08x CR %08x MIS %08x\n",
       DMA2_Stream1->CR,
       DMA2_Stream1->NDTR,
       DMA2_Stream1->PAR,
@@ -382,6 +309,7 @@ if (0) {
       (unsigned)((buf[0] >> 24) & 0xff),
       sum,
       line_count,
+      frame_count,
       DCMI->DR,
       DCMI->CR,
       DCMI->MISR
@@ -432,30 +360,33 @@ void SysTick_Handler()
 }
 
 void DMA2_Stream1_IRQHandler() {
-if (0)
-  swv_printf("\nCR %08x, NDT %08x, PA %08x, M0A %08x, M1A %08x, LISR %08x | ---DMA2-- | DCMI DR %08x CR %08x MIS %08x\n",
-    DMA2_Stream1->CR,
-    DMA2_Stream1->NDTR,
-    DMA2_Stream1->PAR,
-    DMA2_Stream1->M0AR,
-    DMA2_Stream1->M1AR,
-    DMA2->LISR,
-    DCMI->DR,
-    DCMI->CR,
-    DCMI->MISR
-  );
   HAL_DMA_IRQHandler(&dma2_st1_ch1);
 }
-static volatile uint32_t mis[4800];
+// p line_pixels -- {0, 0, 0, 0, 0, 0, 0, 0, 7640, 320 <repeats 991 times>}
+// p frame_lines -- {233, 480, 480, 480, 228, 389, 480, 480, 480, 74, 66, 480, 480, 480, 398, 257, 480, 480, 480, 206, 454, 480, 480, 480, 10, 150, 480, 480, 480, 313, 361, 480, 480, 480, 103, 47, 480, 480, 480, 416, 267, ...}
+int line_pixels[1000];
+int frame_lines[1000];
+int mis[9000];
 void DCMI_IRQHandler() {
-  static int count = 0;
-  if (count < 4800) {
-    mis[count++] = DCMI->MISR;
-    // mis[count++] = DMA2_Stream1->NDTR;
-  } else {
-    // swv_printf("!\n");
+  static int last_pixel_count = 0;
+  if (DCMI->MISR & DCMI_MIS_LINE_MIS) {
+    line_count++;
+    if (line_count != 1 && line_count - 2 < 1000)
+      line_pixels[line_count - 2] = (15000 - ((int)DMA2_Stream1->NDTR - last_pixel_count)) % 15000;
+    last_pixel_count = DMA2_Stream1->NDTR;
   }
-  if (DCMI->MISR & DCMI_MIS_LINE_MIS) line_count++;
+
+  static int last_line_count = 0;
+  if (DCMI->MISR & DCMI_MIS_VSYNC_MIS) {
+    frame_count++;
+    if (frame_count != 1 && frame_count - 2 < 1000)
+      frame_lines[frame_count - 2] = line_count - last_line_count;
+    last_line_count = line_count;
+  }
+
+  static int ptr = 0;
+  if (ptr < 9000 - 1 && (DCMI->MISR & ~DCMI_MIS_FRAME_MIS) != 0)
+    mis[ptr++] = DCMI->MISR & ~DCMI_MIS_FRAME_MIS;
   HAL_DCMI_IRQHandler(&dcmi);
 }
 
