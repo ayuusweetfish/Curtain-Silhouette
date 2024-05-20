@@ -50,11 +50,10 @@ SPI_HandleTypeDef spi2;
 DMA_HandleTypeDef dma1_ch1;
 
 #define N_SUSPEND 200
-uint8_t spi_rx_buf[25 * N_SUSPEND / 2] = {0};
-uint16_t out_buf[N_SUSPEND][5] = {{ 0 }};
+uint8_t spi_rx_buf[32 * N_SUSPEND / 2] = {0};
+uint16_t out_buf[N_SUSPEND][6] = {{ 0 }};
 
-inline void run();
-void process_lights();
+inline void run_all_lights();
 
 int main()
 {
@@ -100,6 +99,7 @@ int main()
 
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 
+  // ======== GPIO (Act LEDs) ========
   gpio_init.Pull = GPIO_NOPULL;
   gpio_init.Speed = GPIO_SPEED_FREQ_HIGH;
   gpio_init.Pin = GPIO_PIN_0 | GPIO_PIN_1;
@@ -107,6 +107,8 @@ int main()
   HAL_GPIO_Init(GPIOF, &gpio_init);
   HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0 | GPIO_PIN_1, 1);
 
+  // ======== GPIO (Light strips) ========
+  // GPIOA
   gpio_init = (GPIO_InitTypeDef){
     .Pin = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3 |
            GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7 |
@@ -116,6 +118,35 @@ int main()
   };
   HAL_GPIO_Init(GPIOA, &gpio_init);
   HAL_GPIO_WritePin(GPIOA, gpio_init.Pin, 0);
+
+  // GPIOB
+  gpio_init = (GPIO_InitTypeDef){
+    .Pin = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3 |
+           GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6 |
+           GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15,
+    .Mode = GPIO_MODE_OUTPUT_PP,
+    .Speed = GPIO_SPEED_FREQ_HIGH,
+  };
+  HAL_GPIO_Init(GPIOB, &gpio_init);
+  HAL_GPIO_WritePin(GPIOB, gpio_init.Pin, 0);
+
+  // GPIOC
+  gpio_init = (GPIO_InitTypeDef){
+    .Pin = GPIO_PIN_6 | GPIO_PIN_7,
+    .Mode = GPIO_MODE_OUTPUT_PP,
+    .Speed = GPIO_SPEED_FREQ_HIGH,
+  };
+  HAL_GPIO_Init(GPIOC, &gpio_init);
+  HAL_GPIO_WritePin(GPIOC, gpio_init.Pin, 0);
+
+  // GPIOD
+  gpio_init = (GPIO_InitTypeDef){
+    .Pin = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3,
+    .Mode = GPIO_MODE_OUTPUT_PP,
+    .Speed = GPIO_SPEED_FREQ_HIGH,
+  };
+  HAL_GPIO_Init(GPIOD, &gpio_init);
+  HAL_GPIO_WritePin(GPIOD, gpio_init.Pin, 0);
 
   // ======== Timer ========
   __HAL_RCC_TIM3_CLK_ENABLE();
@@ -136,11 +167,10 @@ int main()
   // HAL_NVIC_SetPriority(TIM3_IRQn, 1, 0);
   // HAL_NVIC_EnableIRQ(TIM3_IRQn);
 
-  for (int i = 0; i < 25; i++)
+  for (int i = 0; i < 32; i++)
     for (int j = 0; j < N_SUSPEND / 2; j++)
       spi_rx_buf[i * N_SUSPEND / 2 + j] =
         ((i + j) % 5 == 0 ? 0xf : (i + j) % 5 - 1) * 0x11;
-  process_lights();
 
   // ======== SPI2 (PB9 CS, PB8 SCK, PB7 MOSI) ========
   gpio_init.Pin = GPIO_PIN_7 | GPIO_PIN_8;
@@ -196,13 +226,15 @@ int main()
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
-  HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 25 * N_SUSPEND / 2);
+  HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 32 * N_SUSPEND / 2);
   __HAL_DMA_DISABLE_IT(&dma1_ch1, DMA_IT_HT); // We don't need the half-transfer interrupt
 
   while (0) {
     swv_printf("data %02x %02x\n", (int)spi_rx_buf[0], (int)spi_rx_buf[1]);
     HAL_Delay(400);
   }
+
+  run_all_lights();
 
   inline uint32_t my_rand() {
     uint32_t seed = 2451023;
@@ -211,25 +243,19 @@ int main()
   }
 
   int count = 0;
-  int phase = 0;
 
   HAL_GPIO_WritePin(GPIOF, GPIO_PIN_0, 0);
 
   uint32_t tick = HAL_GetTick();
 
   while (1) {
-    __disable_irq();
-    // __set_BASEPRI(1 << 4);  // Disable all interrupts with priority >= 1
-    // asm volatile ("MSR basepri, %0" : : "r" (1 << 4) : "memory");
-    run();
-    __enable_irq();
-    // asm volatile ("MSR basepri, %0" : : "r" (0 << 4) : "memory");
-
     uint32_t cur;
     while ((cur = HAL_GetTick()) - tick < 20) { }
     tick = cur;
 
 /*
+    static int phase = 0;
+
     for (int i = 0; i < sizeof spi_rx_buf / sizeof spi_rx_buf[0]; i++)
       spi_rx_buf[i] = 0;
 
@@ -247,7 +273,7 @@ int main()
         spi_rx_buf[(strip * N_SUSPEND + i) / 2] |= (value << (i % 2 == 0 ? 0 : 4));
       }
     }
-    process_lights();
+    process_lights_AB();
 */
 
     if (++count % 50 == 0) {
@@ -263,101 +289,210 @@ int main()
   }
 }
 
-void process_lights()
+#pragma GCC optimize("O3")
+static inline void process_lights_AB()
 {
   for (unsigned pendu = 0; pendu < N_SUSPEND; pendu++) {
     uint8_t shift = (pendu % 2 ? 4 : 0);
-    for (unsigned bit = 0; bit <= 3; bit++) {
-      out_buf[pendu][bit] =
-        (((spi_rx_buf[(0 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 0) | 
-        (((spi_rx_buf[(1 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 1) | 
-        (((spi_rx_buf[(2 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 2) | 
-        (((spi_rx_buf[(3 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 3) | 
-        (((spi_rx_buf[(4 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 4) | 
-        (((spi_rx_buf[(5 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 5) | 
-        (((spi_rx_buf[(6 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 6) | 
-        (((spi_rx_buf[(7 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 7);
+    for (unsigned bit = 0; bit <= 1; bit++) {
+      out_buf[pendu][0 + bit] =
+        (((spi_rx_buf[( 0 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  0) | 
+        (((spi_rx_buf[( 1 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  1) | 
+        (((spi_rx_buf[( 2 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  2) | 
+        (((spi_rx_buf[( 3 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  3) | 
+        (((spi_rx_buf[( 4 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  4) | 
+        (((spi_rx_buf[( 5 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  5) | 
+        (((spi_rx_buf[( 6 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  6) | 
+        (((spi_rx_buf[( 7 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  7) |
+        (((spi_rx_buf[(22 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  8) |
+        (((spi_rx_buf[(21 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  9) |
+        (((spi_rx_buf[(18 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 10) |
+        (((spi_rx_buf[(17 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 11) |
+        (((spi_rx_buf[(16 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 12);
+      out_buf[pendu][3 + bit] =
+        (((spi_rx_buf[( 8 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  0) | 
+        (((spi_rx_buf[( 9 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  1) | 
+        (((spi_rx_buf[(10 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  2) | 
+        (((spi_rx_buf[(28 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  3) | 
+        (((spi_rx_buf[(29 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  4) | 
+        (((spi_rx_buf[(30 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  5) | 
+        (((spi_rx_buf[(31 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  6) | 
+        (((spi_rx_buf[(11 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 10) |
+        (((spi_rx_buf[(12 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 11) |
+        (((spi_rx_buf[(13 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 12) |
+        (((spi_rx_buf[(14 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 13) |
+        (((spi_rx_buf[(15 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 14) |
+        (((spi_rx_buf[(23 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) << 15);
     }
-    out_buf[pendu][4] =
-      (((spi_rx_buf[(0 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 0)) |
-      (((spi_rx_buf[(1 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 1)) |
-      (((spi_rx_buf[(2 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 2)) |
-      (((spi_rx_buf[(3 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 3)) |
-      (((spi_rx_buf[(4 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 4)) |
-      (((spi_rx_buf[(5 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 5)) |
-      (((spi_rx_buf[(6 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 6)) |
-      (((spi_rx_buf[(7 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 7));
+    out_buf[pendu][0 + 2] =
+      (((spi_rx_buf[( 0 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  0)) |
+      (((spi_rx_buf[( 1 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  1)) |
+      (((spi_rx_buf[( 2 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  2)) |
+      (((spi_rx_buf[( 3 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  3)) |
+      (((spi_rx_buf[( 4 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  4)) |
+      (((spi_rx_buf[( 5 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  5)) |
+      (((spi_rx_buf[( 6 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  6)) |
+      (((spi_rx_buf[( 7 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  7)) |
+      (((spi_rx_buf[(22 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  8)) |
+      (((spi_rx_buf[(21 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  9)) |
+      (((spi_rx_buf[(18 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 10)) |
+      (((spi_rx_buf[(17 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 11)) |
+      (((spi_rx_buf[(16 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 12));
+    out_buf[pendu][3 + 2] =
+      (((spi_rx_buf[( 8 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  0)) |
+      (((spi_rx_buf[( 9 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  1)) |
+      (((spi_rx_buf[(10 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  2)) |
+      (((spi_rx_buf[(28 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  3)) |
+      (((spi_rx_buf[(29 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  4)) |
+      (((spi_rx_buf[(30 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  5)) |
+      (((spi_rx_buf[(31 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  6)) |
+      (((spi_rx_buf[(11 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 10)) |
+      (((spi_rx_buf[(12 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 11)) |
+      (((spi_rx_buf[(13 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 12)) |
+      (((spi_rx_buf[(14 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 13)) |
+      (((spi_rx_buf[(15 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 14)) |
+      (((spi_rx_buf[(23 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 15));
+  }
+}
+
+#pragma GCC optimize("O3")
+static inline void process_lights_CD()
+{
+  for (unsigned pendu = 0; pendu < N_SUSPEND; pendu++) {
+    uint8_t shift = (pendu % 2 ? 4 : 0);
+    for (unsigned bit = 0; bit <= 1; bit++) {
+      out_buf[pendu][0 + bit] =
+        (((spi_rx_buf[(20 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  6) | 
+        (((spi_rx_buf[(19 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  7);
+      out_buf[pendu][3 + bit] =
+        (((spi_rx_buf[(24 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  0) | 
+        (((spi_rx_buf[(25 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  1) | 
+        (((spi_rx_buf[(26 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  2) | 
+        (((spi_rx_buf[(27 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  3);
+    }
+    out_buf[pendu][0 + 2] =
+      (((spi_rx_buf[(20 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  6)) |
+      (((spi_rx_buf[(19 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  7));
+    out_buf[pendu][3 + 2] =
+      (((spi_rx_buf[(24 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  0)) |
+      (((spi_rx_buf[(25 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  1)) |
+      (((spi_rx_buf[(26 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  2)) |
+      (((spi_rx_buf[(27 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  3));
   }
 }
 
 // LED used is WS2812 (instead of WS2812B; the timing requirements are different)
+#define OUTPUT_BITS(_portA, _portB, _bitsA, _bitsB) do { \
+  /* Output a bit vector for up to 16 lights in each group at bit `j` */ \
+  uint16_t bitsA = (_bitsA); \
+  \
+  while ((TIM3->SR & TIM_SR_UIF) == 0) { } \
+  TIM3->SR = ~TIM_SR_UIF; \
+  GPIO##_portA->ODR = 0xffff; \
+  GPIO##_portB->ODR = 0xffff; \
+  \
+  uint16_t bitsB = (_bitsB); \
+  \
+  while (TIM3->CNT < 16) { } \
+  GPIO##_portA->ODR = bitsA; \
+  GPIO##_portB->ODR = bitsB; \
+  \
+  while (TIM3->CNT < 48) { } \
+  GPIO##_portA->ODR = 0x0000; \
+  GPIO##_portB->ODR = 0x0000; \
+} while (0)
+
 #pragma GCC optimize("O3")
-void run()
+static inline void run_AB()
 {
   TIM3->SR = ~TIM_SR_UIF;
 
   for (int i = 0; i < N_SUSPEND; i++) {
-    #define OUTPUT_BITS(_bits) do { \
-      /* Output a bit vector for all 8 lights in each group at bit `j` */ \
-      uint16_t bits = (_bits); \
-      \
-      while ((TIM3->SR & TIM_SR_UIF) == 0) { } \
-      TIM3->SR = ~TIM_SR_UIF; \
-      GPIOA->ODR = 0xffff; \
-      \
-      while (TIM3->CNT < 16) { } \
-      GPIOA->ODR = bits; \
-      \
-      while (TIM3->CNT < 48) { } \
-      GPIOA->ODR = 0x0000; \
-    } while (0)
-
     // G
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-    // OUTPUT_BITS(~out_buf[i][3] & out_buf[i][4]);
-    // OUTPUT_BITS(~out_buf[i][2] & out_buf[i][4]);
-    OUTPUT_BITS(~out_buf[i][1] & out_buf[i][4]);
-    OUTPUT_BITS(~out_buf[i][0] & out_buf[i][4]);
-  /*
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(i % 16 < 8 ? 1 : 0);
-    OUTPUT_BITS(i % 16 < 8 ? 1 : 0);
-  */
+    OUTPUT_BITS(A, B, 0, 0);
+    OUTPUT_BITS(A, B, 0, 0);
+    OUTPUT_BITS(A, B, 0, 0);
+    OUTPUT_BITS(A, B, 0, 0);
+    OUTPUT_BITS(A, B, 0, 0);
+    OUTPUT_BITS(A, B, 0, 0);
+    OUTPUT_BITS(A, B, ~out_buf[i][1] & out_buf[i][2], ~out_buf[i][4] & out_buf[i][5]);
+    OUTPUT_BITS(A, B, ~out_buf[i][0] & out_buf[i][2], ~out_buf[i][3] & out_buf[i][5]);
 
     // R
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-    // OUTPUT_BITS(out_buf[i][3] & out_buf[i][4]);
-    // OUTPUT_BITS(out_buf[i][2] & out_buf[i][4]);
-    OUTPUT_BITS(out_buf[i][1] & out_buf[i][4]);
-    OUTPUT_BITS(out_buf[i][0] & out_buf[i][4]);
-  /*
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-  */
+    OUTPUT_BITS(A, B, 0, 0);
+    OUTPUT_BITS(A, B, 0, 0);
+    OUTPUT_BITS(A, B, 0, 0);
+    OUTPUT_BITS(A, B, 0, 0);
+    OUTPUT_BITS(A, B, 0, 0);
+    OUTPUT_BITS(A, B, 0, 0);
+    OUTPUT_BITS(A, B, out_buf[i][1] & out_buf[i][2], out_buf[i][4] & out_buf[i][5]);
+    OUTPUT_BITS(A, B, out_buf[i][0] & out_buf[i][2], out_buf[i][3] & out_buf[i][5]);
 
     // B
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-    OUTPUT_BITS(0);
-    OUTPUT_BITS((~out_buf[i][1] | out_buf[i][1]) & out_buf[i][4]);
+    OUTPUT_BITS(A, B, 0, 0);
+    OUTPUT_BITS(A, B, 0, 0);
+    OUTPUT_BITS(A, B, 0, 0);
+    OUTPUT_BITS(A, B, 0, 0);
+    OUTPUT_BITS(A, B, 0, 0);
+    OUTPUT_BITS(A, B, 0, 0);
+    OUTPUT_BITS(A, B, 0, 0);
+    OUTPUT_BITS(A, B, out_buf[i][2], out_buf[i][5]);
   }
+}
+
+// Repeat yourself
+#pragma GCC optimize("O3")
+static inline void run_CD()
+{
+  TIM3->SR = ~TIM_SR_UIF;
+
+  for (int i = 0; i < N_SUSPEND; i++) {
+    // G
+    OUTPUT_BITS(C, D, 0, 0);
+    OUTPUT_BITS(C, D, 0, 0);
+    OUTPUT_BITS(C, D, 0, 0);
+    OUTPUT_BITS(C, D, 0, 0);
+    OUTPUT_BITS(C, D, 0, 0);
+    OUTPUT_BITS(C, D, 0, 0);
+    OUTPUT_BITS(C, D, ~out_buf[i][1] & out_buf[i][2], ~out_buf[i][4] & out_buf[i][5]);
+    OUTPUT_BITS(C, D, ~out_buf[i][0] & out_buf[i][2], ~out_buf[i][3] & out_buf[i][5]);
+
+    // R
+    OUTPUT_BITS(C, D, 0, 0);
+    OUTPUT_BITS(C, D, 0, 0);
+    OUTPUT_BITS(C, D, 0, 0);
+    OUTPUT_BITS(C, D, 0, 0);
+    OUTPUT_BITS(C, D, 0, 0);
+    OUTPUT_BITS(C, D, 0, 0);
+    OUTPUT_BITS(C, D, out_buf[i][1] & out_buf[i][2], out_buf[i][4] & out_buf[i][5]);
+    OUTPUT_BITS(C, D, out_buf[i][0] & out_buf[i][2], out_buf[i][3] & out_buf[i][5]);
+
+    // B
+    OUTPUT_BITS(C, D, 0, 0);
+    OUTPUT_BITS(C, D, 0, 0);
+    OUTPUT_BITS(C, D, 0, 0);
+    OUTPUT_BITS(C, D, 0, 0);
+    OUTPUT_BITS(C, D, 0, 0);
+    OUTPUT_BITS(C, D, 0, 0);
+    OUTPUT_BITS(C, D, 0, 0);
+    OUTPUT_BITS(C, D, out_buf[i][2], out_buf[i][5]);
+  }
+}
+
+void run_all_lights()
+{
+  __disable_irq();
+  // __set_BASEPRI(1 << 4);  // Disable all interrupts with priority >= 1
+  // asm volatile ("MSR basepri, %0" : : "r" (1 << 4) : "memory");
+
+  process_lights_AB();
+  run_AB();
+
+  process_lights_CD();
+  run_CD();
+
+  __enable_irq();
+  // asm volatile ("MSR basepri, %0" : : "r" (0 << 4) : "memory");
 }
 
 void SysTick_Handler()
@@ -382,9 +517,9 @@ void DMA1_Channel1_IRQHandler() {
   HAL_SPI_IRQHandler(&spi2);
 
   if (spi2.ErrorCode == 0) {
-    process_lights();
+    run_all_lights();
 
-    HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 25 * N_SUSPEND / 2);
+    HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 32 * N_SUSPEND / 2);
     __HAL_DMA_DISABLE_IT(&dma1_ch1, DMA_IT_HT);
     static int parity = 1;
     HAL_GPIO_WritePin(GPIOF, GPIO_PIN_1, parity ^= 1);
