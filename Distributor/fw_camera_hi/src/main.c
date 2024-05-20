@@ -62,6 +62,8 @@ uint8_t spi_tx_buf[32 * N_SUSPEND / 2];
 
 static int line_count = 0;
 static int frame_count = 0;
+static uint32_t dcmi_buf[2560] = { 0xaa };
+#define dcmi_buf_size (sizeof dcmi_buf / sizeof dcmi_buf[0])
 
 int main()
 {
@@ -230,7 +232,7 @@ int main()
   HAL_Delay(305); // OV7670 datasheet t_S:REG
 
 // Test frequencies
-if (1) {
+if (0) {
   // PA4 HSYNC, PA6 PIXCLK, PA9 D0, PA10 D1
   gpio_init = (GPIO_InitTypeDef){
     .Pin = GPIO_PIN_4 | GPIO_PIN_6 | GPIO_PIN_9 | GPIO_PIN_10,
@@ -281,7 +283,7 @@ if (1) {
     }
     swv_printf("counts %d\n", counts[0]);
 
-  } else if (0) {
+  } else {
     // Count bytes per line
 
     int counts[100] = { 0 };
@@ -389,32 +391,17 @@ if (1) {
   HAL_NVIC_SetPriority(DCMI_IRQn, 2, 1);
   HAL_NVIC_EnableIRQ(DCMI_IRQn);
 
-  static uint32_t buf[15000] = { 0xaa };
-  for (int i = 0; i < 15000; i++) buf[i] = i;
-  HAL_DCMI_Start_DMA(&dcmi, DCMI_MODE_CONTINUOUS, (uint32_t)&buf[0], 15000);
-  // Snapshot takes 3600 words = 14400 bytes = 7200 pixels
-  // HAL_DCMI_Start_DMA(&dcmi, DCMI_MODE_SNAPSHOT, (uint32_t)&buf[0], 15000);
+  HAL_DCMI_Start_DMA(&dcmi, DCMI_MODE_CONTINUOUS, (uint32_t)&dcmi_buf[0], dcmi_buf_size);
 
-  while (0) {
+  while (1) {
     uint32_t sum = 0;
-    for (int i = 0; i < 15000; i++) sum += ((buf[i] >> 24) & 0xff) + ((buf[i] >> 8) & 0xff);
-  if (0)
-    swv_printf("CR %08x, NDT %08x, PA %08x, M0A %08x, M1A %08x, LISR %08x, ErrorCode %08x | buf[0] %02x sum %08x line_count %5d frame_count %5d | DCMI DR %08x CR %08x MIS %08x\n",
-      DMA2_Stream1->CR,
-      DMA2_Stream1->NDTR,
-      DMA2_Stream1->PAR,
-      DMA2_Stream1->M0AR,
-      DMA2_Stream1->M1AR,
-      DMA2->LISR,
-      dma2_st1_ch1.ErrorCode,
-      (unsigned)((buf[0] >> 24) & 0xff),
-      sum,
-      line_count,
-      frame_count,
-      DCMI->DR,
-      DCMI->CR,
-      DCMI->MISR
-    );
+    for (int i = 0; i < dcmi_buf_size; i++)
+      sum += ((dcmi_buf[i] >> 24) & 0xff) + ((dcmi_buf[i] >> 8) & 0xff);
+    if (sum > dcmi_buf_size * 2 * 60) {
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
+    } else {
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
+    }
     HAL_Delay(300);
   }
 
@@ -460,34 +447,47 @@ void SysTick_Handler()
   HAL_SYSTICK_IRQHandler();
 }
 
+void dcmi_error() {
+  for (int i = 0; i < 40; i++) {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, i % 2); HAL_Delay(50);
+  }
+}
 void DMA2_Stream1_IRQHandler() {
   HAL_DMA_IRQHandler(&dma2_st1_ch1);
 }
-// p line_pixels -- {0, 0, 0, 0, 0, 0, 0, 0, 7640, 320 <repeats 991 times>}
-// p frame_lines -- {233, 480, 480, 480, 228, 389, 480, 480, 480, 74, 66, 480, 480, 480, 398, 257, 480, 480, 480, 206, 454, 480, 480, 480, 10, 150, 480, 480, 480, 313, 361, 480, 480, 480, 103, 47, 480, 480, 480, 416, 267, ...}
 int line_pixels[1000];
 int frame_lines[1000];
-int mis[9000];
 void DCMI_IRQHandler() {
-  static int last_pixel_count = 0;
-  if (frame_count > 0 && (DCMI->MISR & DCMI_MIS_LINE_MIS)) {
+  uint32_t misr = DCMI->MISR;
+
+  static int last_pixel_count = 0;  // DMA counter starts at the beginning of the buffer
+  if (frame_count > 0 && (misr & DCMI_MIS_LINE_MIS)) {
+    uint32_t ndtr = DMA2_Stream1->NDTR;
+    if (line_count < 1000)
+      line_pixels[line_count] = (last_pixel_count - ndtr + dcmi_buf_size) % dcmi_buf_size;
+
+    if ((last_pixel_count - ndtr + dcmi_buf_size) % dcmi_buf_size != 320) {
+      dcmi_error();
+    }
+
     line_count++;
-    if (line_count != 1 && line_count - 2 < 1000)
-      line_pixels[line_count - 2] = (15000 - ((int)DMA2_Stream1->NDTR - last_pixel_count)) % 15000;
-    last_pixel_count = DMA2_Stream1->NDTR;
+    last_pixel_count = ndtr;
   }
 
   static int last_line_count = 0;
-  if (DCMI->MISR & DCMI_MIS_VSYNC_MIS) {
+  if (misr & DCMI_MIS_VSYNC_MIS) {
+    if (frame_count >= 1 && frame_count - 1 < 1000)
+      frame_lines[frame_count - 1] = line_count - last_line_count;
+
+    // 32-bit wraparound does not affect this equality
+    if (frame_count >= 1 && line_count - last_line_count != 480) {
+      dcmi_error();
+    }
+
     frame_count++;
-    if (frame_count != 1 && frame_count - 2 < 1000)
-      frame_lines[frame_count - 2] = line_count - last_line_count;
     last_line_count = line_count;
   }
 
-  static int ptr = 0;
-  if (ptr < 9000 - 1 && (DCMI->MISR & ~DCMI_MIS_FRAME_MIS) != 0)
-    mis[ptr++] = DCMI->MISR & ~DCMI_MIS_FRAME_MIS;
   HAL_DCMI_IRQHandler(&dcmi);
 }
 
