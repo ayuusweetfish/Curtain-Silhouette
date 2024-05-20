@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-// #define RELEASE
+#define RELEASE
 #ifndef RELEASE
 #define _release_inline
 static uint8_t swv_buf[256];
@@ -52,8 +52,10 @@ DMA_HandleTypeDef dma1_ch1;
 #define N_SUSPEND 200
 uint8_t spi_rx_buf[32 * N_SUSPEND / 2] = {0};
 uint16_t out_buf[N_SUSPEND][6] = {{ 0 }};
+uint8_t out_buf_cd[N_SUSPEND][3] = {{ 0 }};
 
-inline void run_all_lights();
+inline void process_lights();
+inline void run();
 
 int main()
 {
@@ -171,6 +173,7 @@ int main()
     for (int j = 0; j < N_SUSPEND / 2; j++)
       spi_rx_buf[i * N_SUSPEND / 2 + j] =
         ((i + j) % 5 == 0 ? 0xf : (i + j) % 5 - 1) * 0x11;
+  process_lights();
 
   // ======== SPI2 (PB9 CS, PB8 SCK, PB7 MOSI) ========
   gpio_init.Pin = GPIO_PIN_7 | GPIO_PIN_8;
@@ -234,8 +237,6 @@ int main()
     HAL_Delay(400);
   }
 
-  run_all_lights();
-
   inline uint32_t my_rand() {
     uint32_t seed = 2451023;
     seed = seed * 1103515245 + 12345;
@@ -249,11 +250,20 @@ int main()
   uint32_t tick = HAL_GetTick();
 
   while (1) {
+    __disable_irq();
+    // __set_BASEPRI(1 << 4);  // Disable all interrupts with priority >= 1
+    // asm volatile ("MSR basepri, %0" : : "r" (1 << 4) : "memory");
+
+    run();
+
+    __enable_irq();
+    // asm volatile ("MSR basepri, %0" : : "r" (0 << 4) : "memory");
+
     uint32_t cur;
     while ((cur = HAL_GetTick()) - tick < 20) { }
     tick = cur;
 
-/*
+if (0) {
     static int phase = 0;
 
     for (int i = 0; i < sizeof spi_rx_buf / sizeof spi_rx_buf[0]; i++)
@@ -273,8 +283,8 @@ int main()
         spi_rx_buf[(strip * N_SUSPEND + i) / 2] |= (value << (i % 2 == 0 ? 0 : 4));
       }
     }
-    process_lights_AB();
-*/
+    process_lights();
+ }
 
     if (++count % 50 == 0) {
       if (count == 100) count = 0;
@@ -290,8 +300,10 @@ int main()
 }
 
 #pragma GCC optimize("O3")
-static inline void process_lights_AB()
+void process_lights()
 {
+  // Ports A, B
+
   for (unsigned pendu = 0; pendu < N_SUSPEND; pendu++) {
     uint8_t shift = (pendu % 2 ? 4 : 0);
     for (unsigned bit = 0; bit <= 1; bit++) {
@@ -353,27 +365,23 @@ static inline void process_lights_AB()
       (((spi_rx_buf[(15 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 14)) |
       (((spi_rx_buf[(23 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 << 15));
   }
-}
 
-#pragma GCC optimize("O3")
-static inline void process_lights_CD()
-{
+  // Ports C, D
+
   for (unsigned pendu = 0; pendu < N_SUSPEND; pendu++) {
     uint8_t shift = (pendu % 2 ? 4 : 0);
     for (unsigned bit = 0; bit <= 1; bit++) {
-      out_buf[pendu][0 + bit] =
+      out_buf_cd[pendu][0 + bit] =
         (((spi_rx_buf[(20 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  6) | 
-        (((spi_rx_buf[(19 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  7);
-      out_buf[pendu][3 + bit] =
+        (((spi_rx_buf[(19 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  7) |
         (((spi_rx_buf[(24 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  0) | 
         (((spi_rx_buf[(25 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  1) | 
         (((spi_rx_buf[(26 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  2) | 
         (((spi_rx_buf[(27 * N_SUSPEND + pendu) / 2] >> (bit + shift)) & 1) <<  3);
     }
-    out_buf[pendu][0 + 2] =
+    out_buf_cd[pendu][0 + 2] =
       (((spi_rx_buf[(20 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  6)) |
-      (((spi_rx_buf[(19 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  7));
-    out_buf[pendu][3 + 2] =
+      (((spi_rx_buf[(19 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  7)) |
       (((spi_rx_buf[(24 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  0)) |
       (((spi_rx_buf[(25 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  1)) |
       (((spi_rx_buf[(26 * N_SUSPEND + pendu) / 2] >> shift) & 0xf) == 0xf ? 0 : (1 <<  2)) |
@@ -403,8 +411,10 @@ static inline void process_lights_CD()
 } while (0)
 
 #pragma GCC optimize("O3")
-static inline void run_AB()
+void run()
 {
+  // Ports A, B
+
   TIM3->SR = ~TIM_SR_UIF;
 
   for (int i = 0; i < N_SUSPEND; i++) {
@@ -438,12 +448,10 @@ static inline void run_AB()
     OUTPUT_BITS(A, B, 0, 0);
     OUTPUT_BITS(A, B, out_buf[i][2], out_buf[i][5]);
   }
-}
 
-// Repeat yourself
-#pragma GCC optimize("O3")
-static inline void run_CD()
-{
+  // Repeat yourself
+  // Ports C, D
+
   TIM3->SR = ~TIM_SR_UIF;
 
   for (int i = 0; i < N_SUSPEND; i++) {
@@ -454,8 +462,8 @@ static inline void run_CD()
     OUTPUT_BITS(C, D, 0, 0);
     OUTPUT_BITS(C, D, 0, 0);
     OUTPUT_BITS(C, D, 0, 0);
-    OUTPUT_BITS(C, D, ~out_buf[i][1] & out_buf[i][2], ~out_buf[i][4] & out_buf[i][5]);
-    OUTPUT_BITS(C, D, ~out_buf[i][0] & out_buf[i][2], ~out_buf[i][3] & out_buf[i][5]);
+    OUTPUT_BITS(C, D, ~out_buf_cd[i][1] & out_buf_cd[i][2], ~out_buf_cd[i][1] & out_buf_cd[i][2]);
+    OUTPUT_BITS(C, D, ~out_buf_cd[i][0] & out_buf_cd[i][2], ~out_buf_cd[i][0] & out_buf_cd[i][2]);
 
     // R
     OUTPUT_BITS(C, D, 0, 0);
@@ -464,8 +472,8 @@ static inline void run_CD()
     OUTPUT_BITS(C, D, 0, 0);
     OUTPUT_BITS(C, D, 0, 0);
     OUTPUT_BITS(C, D, 0, 0);
-    OUTPUT_BITS(C, D, out_buf[i][1] & out_buf[i][2], out_buf[i][4] & out_buf[i][5]);
-    OUTPUT_BITS(C, D, out_buf[i][0] & out_buf[i][2], out_buf[i][3] & out_buf[i][5]);
+    OUTPUT_BITS(C, D, out_buf_cd[i][1] & out_buf_cd[i][2], out_buf_cd[i][1] & out_buf_cd[i][2]);
+    OUTPUT_BITS(C, D, out_buf_cd[i][0] & out_buf_cd[i][2], out_buf_cd[i][0] & out_buf_cd[i][2]);
 
     // B
     OUTPUT_BITS(C, D, 0, 0);
@@ -475,24 +483,8 @@ static inline void run_CD()
     OUTPUT_BITS(C, D, 0, 0);
     OUTPUT_BITS(C, D, 0, 0);
     OUTPUT_BITS(C, D, 0, 0);
-    OUTPUT_BITS(C, D, out_buf[i][2], out_buf[i][5]);
+    OUTPUT_BITS(C, D, out_buf_cd[i][2], out_buf_cd[i][2]);
   }
-}
-
-void run_all_lights()
-{
-  __disable_irq();
-  // __set_BASEPRI(1 << 4);  // Disable all interrupts with priority >= 1
-  // asm volatile ("MSR basepri, %0" : : "r" (1 << 4) : "memory");
-
-  process_lights_AB();
-  run_AB();
-
-  process_lights_CD();
-  run_CD();
-
-  __enable_irq();
-  // asm volatile ("MSR basepri, %0" : : "r" (0 << 4) : "memory");
 }
 
 void SysTick_Handler()
@@ -517,7 +509,7 @@ void DMA1_Channel1_IRQHandler() {
   HAL_SPI_IRQHandler(&spi2);
 
   if (spi2.ErrorCode == 0) {
-    run_all_lights();
+    process_lights();
 
     HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 32 * N_SUSPEND / 2);
     __HAL_DMA_DISABLE_IT(&dma1_ch1, DMA_IT_HT);
