@@ -61,12 +61,17 @@ DCMI_HandleTypeDef dcmi;
 uint8_t spi_tx_buf[32 * N_SUSPEND / 2];
 
 static int line_count = 0;
-static int frame_count = 0;
+static int frame_count __attribute__ ((section(".ccmram")));
 static uint32_t dcmi_buf[2560] = { 0xaa };
 #define dcmi_buf_size (sizeof dcmi_buf / sizeof dcmi_buf[0])
 
+extern uint32_t _sccmram;
+
 int main()
 {
+  // CCMRAM variables need to be manually initialized
+  frame_count = 0;
+
   HAL_Init();
 
   // ======== GPIO ========
@@ -112,6 +117,7 @@ int main()
   HAL_RCC_ClockConfig(&clk_init, FLASH_LATENCY_5);  // AN3988 (Rev 2) p. 9 Tab. 2
 
   // swv_printf("Sys clock = %u\n", HAL_RCC_GetSysClockFreq());
+  swv_printf("_sccmram = %p, frame_count addr = %p, spi_tx_buf addr = %p\n", &_sccmram, &frame_count, spi_tx_buf);
 
   HAL_NVIC_SetPriority(SysTick_IRQn, 1, 0);
 

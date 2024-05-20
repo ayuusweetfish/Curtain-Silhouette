@@ -14,9 +14,9 @@
   "frameworks": [
     "stm32cube"
   ],
-  "name": "STM32F407VE (112k RAM, 512k Flash)",
+  "name": "STM32F407VE (128l RAM, 512k Flash)",
   "upload": {
-    "maximum_ram_size": 114688,
+    "maximum_ram_size": 131072,
     "maximum_size": 524288,
     "protocol": "stlink",
     "protocols": [
