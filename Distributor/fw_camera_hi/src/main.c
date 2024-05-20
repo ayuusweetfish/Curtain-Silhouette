@@ -58,7 +58,7 @@ DMA_HandleTypeDef dma2_st1_ch1;
 DCMI_HandleTypeDef dcmi;
 
 #define N_SUSPEND 200
-uint8_t spi_tx_buf[25 * N_SUSPEND / 2];
+uint8_t spi_tx_buf[32 * N_SUSPEND / 2];
 
 static int line_count = 0;
 static int frame_count = 0;
@@ -153,6 +153,11 @@ int main()
   gpio_init.Mode = GPIO_MODE_OUTPUT_PP;
   HAL_GPIO_Init(GPIOA, &gpio_init);
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0 | GPIO_PIN_1, 1);
+
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); HAL_Delay(80);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1); HAL_Delay(80);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); HAL_Delay(80);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1); HAL_Delay(80);
 
   // ======== Camera controls ========
   // PA2 CAM_PWDN (active high), PA3 CAM_RESET (active low)
@@ -276,7 +281,7 @@ if (1) {
     }
     swv_printf("counts %d\n", counts[0]);
 
-  } else {
+  } else if (0) {
     // Count bytes per line
 
     int counts[100] = { 0 };
@@ -390,7 +395,7 @@ if (1) {
   // Snapshot takes 3600 words = 14400 bytes = 7200 pixels
   // HAL_DCMI_Start_DMA(&dcmi, DCMI_MODE_SNAPSHOT, (uint32_t)&buf[0], 15000);
 
-  while (1) {
+  while (0) {
     uint32_t sum = 0;
     for (int i = 0; i < 15000; i++) sum += ((buf[i] >> 24) & 0xff) + ((buf[i] >> 8) & 0xff);
   if (0)
@@ -429,7 +434,7 @@ if (1) {
       spi_tx_buf[i] = 0;
 
     if (++count % 2 == 0) phase = (phase + 1) % 8;
-    for (int strip = 0; strip < 8; strip++) {
+    for (int strip = 0; strip < 32; strip++) {
       for (int i = 0; i < N_SUSPEND; i++) {
         uint8_t value;
         if (i % 8 == (strip + count / 50) % 8) value = 0xf;
@@ -442,7 +447,7 @@ if (1) {
     }
 
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);
-    int result = HAL_SPI_Transmit(&spi2, spi_tx_buf, 25 * N_SUSPEND / 2, 1000);
+    int result = HAL_SPI_Transmit(&spi2, spi_tx_buf, 32 * N_SUSPEND / 2, 1000);
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
     swv_printf("SPI tx result = %d\n", result);
   }
