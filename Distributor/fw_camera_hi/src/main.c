@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "mlx90640/MLX90640_API.h"
 
@@ -60,12 +61,15 @@ DCMI_HandleTypeDef dcmi;
 #define N_SUSPEND 200
 uint8_t spi_tx_buf[32 * N_SUSPEND / 2];
 
-static int line_count = 0;
-static int frame_count __attribute__ ((section(".ccmram")));
-static uint32_t dcmi_buf[2560] = { 0xaa };
+static uint32_t line_count = 0;
+static uint32_t frame_count __attribute__ ((section(".ccmram")));
+// 320 words (640 pixels @ 16bpp) per line
+// 4 lines for multiple buffering
+static uint32_t dcmi_buf[1280] = { 0xaa };
 #define dcmi_buf_size (sizeof dcmi_buf / sizeof dcmi_buf[0])
 
-extern uint32_t _sccmram;
+static uint16_t running_x[120 * 160], running_x2[120 * 160];
+static uint16_t cur_sum[120 * 160] __attribute__ ((section(".ccmram")));
 
 int main()
 {
@@ -117,7 +121,6 @@ int main()
   HAL_RCC_ClockConfig(&clk_init, FLASH_LATENCY_5);  // AN3988 (Rev 2) p. 9 Tab. 2
 
   // swv_printf("Sys clock = %u\n", HAL_RCC_GetSysClockFreq());
-  swv_printf("_sccmram = %p, frame_count addr = %p, spi_tx_buf addr = %p\n", &_sccmram, &frame_count, spi_tx_buf);
 
   HAL_NVIC_SetPriority(SysTick_IRQn, 1, 0);
 
@@ -403,11 +406,11 @@ if (0) {
     uint32_t sum = 0;
     for (int i = 0; i < dcmi_buf_size; i++)
       sum += ((dcmi_buf[i] >> 24) & 0xff) + ((dcmi_buf[i] >> 8) & 0xff);
-    if (sum > dcmi_buf_size * 2 * 60) {
+    /* if (sum > dcmi_buf_size * 2 * 60) {
       HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
     } else {
       HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
-    }
+    } */
     HAL_Delay(300);
   }
 
@@ -466,33 +469,66 @@ int frame_lines[1000];
 void DCMI_IRQHandler() {
   uint32_t misr = DCMI->MISR;
 
-  static int last_pixel_count = 0;  // DMA counter starts at the beginning of the buffer
+  // DMA counter starts at the beginning of the buffer
+  static int last_pixel_count = dcmi_buf_size;
+
   if (frame_count > 0 && (misr & DCMI_MIS_LINE_MIS)) {
     uint32_t ndtr = DMA2_Stream1->NDTR;
+    if (ndtr == dcmi_buf_size) ndtr = 0;
     if (line_count < 1000)
-      line_pixels[line_count] = (last_pixel_count - ndtr + dcmi_buf_size) % dcmi_buf_size;
+      line_pixels[line_count] = last_pixel_count - ndtr;
 
-    if ((last_pixel_count - ndtr + dcmi_buf_size) % dcmi_buf_size != 320) {
+    if (last_pixel_count - ndtr != 320) {
       dcmi_error();
+      return;
+    }
+
+    int32_t start = dcmi_buf_size - ndtr - 320;
+    if (start < 0) {
+      dcmi_error();
+      return;
+    }
+
+    for (int i = 0; i < 320; i++) {
+      uint8_t v1 = (dcmi_buf[start + i] >> 24) & 0xff;
+      uint8_t v2 = (dcmi_buf[start + i] >>  8) & 0xff;
+      cur_sum[(line_count / 4) * 160 + i / 2] += ((uint16_t)v1 + v2);
     }
 
     line_count++;
-    last_pixel_count = ndtr;
+    last_pixel_count = (ndtr == 0 ? dcmi_buf_size : ndtr);
   }
 
   static int last_line_count = 0;
   if (misr & DCMI_MIS_VSYNC_MIS) {
     if (frame_count >= 1 && frame_count - 1 < 1000)
-      frame_lines[frame_count - 1] = line_count - last_line_count;
+      frame_lines[frame_count - 1] = line_count;
 
-    // 32-bit wraparound does not affect this equality
-    if (frame_count >= 1 && line_count - last_line_count != 480) {
+    if (frame_count >= 1 && line_count != 480) {
       dcmi_error();
+      return;
+    }
+
+    if (frame_count >= 1) {
+      // Process frame >o<
+      uint32_t sum = 0;
+      for (int i = 0; i < 160 * 120; i++) sum += (cur_sum[i] >> 4);
+      if (sum > 160 * 120 * 60) {
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
+      } else {
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
+      }
     }
 
     frame_count++;
-    last_line_count = line_count;
+    line_count = 0;
+
+    memset(cur_sum, 0, sizeof cur_sum);
   }
+
+  running_x[0] = 0;
+  running_x2[0] = 0;
+  cur_sum[0] = 0;
 
   HAL_DCMI_IRQHandler(&dcmi);
 }
