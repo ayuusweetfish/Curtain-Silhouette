@@ -172,6 +172,7 @@ int main()
 
   HAL_Delay(2);
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, 1);  // Release reset
+  HAL_Delay(2); // OV7670 datasheet t_S:RESET
 
   // ======== I2C2 (PB10 SCL, PB11 SDA) ========
   gpio_init = (GPIO_InitTypeDef){
@@ -194,26 +195,116 @@ int main()
   };
   HAL_I2C_Init(&i2c2);
 
-  uint8_t clkrc = 0b10000011; // Prescale by 4
-  HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x11, I2C_MEMADD_SIZE_8BIT, &clkrc, 1, 1000);
-  // First write gets ERROR_AF?
-  HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x11, I2C_MEMADD_SIZE_8BIT, &clkrc, 1, 1000);
+  void camera_write_reg(uint8_t reg, uint8_t val) {
+    HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, reg, I2C_MEMADD_SIZE_8BIT, &val, 1, 1000);
+  }
+
+  // CLKRC: prescale by 2
+  camera_write_reg(0x11, 0b00000001);
+
 /*
-  uint8_t test_pattern_x = 0b10111010;
-  uint8_t test_pattern_y = 0b00110101;  // 8-bar color bar
-  HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x70, I2C_MEMADD_SIZE_8BIT, &test_pattern_x, 1, 1000);
-  HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x71, I2C_MEMADD_SIZE_8BIT, &test_pattern_y, 1, 1000);
+  // QVGA YUV
+  // XXX: Yields 157~158 words per line instead of 160??
+  camera_write_reg(0x12, 0x00); // COM7
+  camera_write_reg(0x0c, 0x04); // COM3
+  camera_write_reg(0x3e, 0x19); // COM14
+  camera_write_reg(0x70, 0x3a); // SCALING_XSC
+  camera_write_reg(0x71, 0x35); // SCALING_YSC
+  camera_write_reg(0x72, 0x11); // SCALING_DCWCTR
+  camera_write_reg(0x73, 0xf1); // SCALING_PCLK_DIV
+  camera_write_reg(0xa2, 0x02); // SCALING_PCLK_DELAY
 */
-  uint8_t com3 = 0b00001000;  // Scale enable
-  uint8_t com7 = 0b00010000;  // QVGA
-  // HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x0c, I2C_MEMADD_SIZE_8BIT, &com3, 1, 1000);
-  // HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, 0x12, I2C_MEMADD_SIZE_8BIT, &com7, 1, 1000);
+
   swv_printf("err %d\n", i2c2.ErrorCode);
 
   if (i2c2.ErrorCode != 0) while (1) {
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1); HAL_Delay(200);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); HAL_Delay(200);
   }
+
+  HAL_Delay(305); // OV7670 datasheet t_S:REG
+
+// Test frequencies
+if (1) {
+  // PA4 HSYNC, PA6 PIXCLK, PA9 D0, PA10 D1
+  gpio_init = (GPIO_InitTypeDef){
+    .Pin = GPIO_PIN_4 | GPIO_PIN_6 | GPIO_PIN_9 | GPIO_PIN_10,
+    .Mode = GPIO_MODE_INPUT,
+    .Speed = GPIO_SPEED_FREQ_VERY_HIGH,
+  };
+  HAL_GPIO_Init(GPIOA, &gpio_init);
+  // PB6 D5, PB7 VSYNC, PB8 D6, PB9 D7
+  gpio_init = (GPIO_InitTypeDef){
+    .Pin = GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9,
+    .Mode = GPIO_MODE_INPUT,
+    .Speed = GPIO_SPEED_FREQ_VERY_HIGH,
+  };
+  HAL_GPIO_Init(GPIOB, &gpio_init);
+  // PE0 D2, PE1 D3, PE4 D4
+  gpio_init = (GPIO_InitTypeDef){
+    .Pin = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_4,
+    .Mode = GPIO_MODE_INPUT,
+    .Speed = GPIO_SPEED_FREQ_VERY_HIGH,
+  };
+  HAL_GPIO_Init(GPIOE, &gpio_init);
+
+  if (0) {
+    // Count lines per frame
+
+    int counts[100] = { 0 };
+    // Wait for VSYNC rise
+    while ((GPIOB->IDR & (1 << 7)) != 0) { }
+    while ((GPIOB->IDR & (1 << 7)) == 0) { }
+
+    for (int i = 0; i < 100; i++) {
+      // Wait for VSYNC fall
+      while ((GPIOB->IDR & (1 << 7)) != 0) { }
+
+      int count = 0;
+      while (1) {
+        // Wait for HREF active
+        while ((GPIOA->IDR & (1 << 4)) == 0)
+          // If VSYNC rises, stop
+          if ((GPIOB->IDR & (1 << 7)) != 0) goto done1;
+
+        count++;
+        // Wait for HREF inactive
+        while ((GPIOA->IDR & (1 << 4)) != 0) { }
+      }
+    done1:
+      counts[i] = count;
+    }
+    swv_printf("counts %d\n", counts[0]);
+
+  } else {
+    // Count bytes per line
+
+    int counts[100] = { 0 };
+    // Wait for HREF inactive
+    while ((GPIOA->IDR & (1 << 4)) == 0) { }
+    while ((GPIOA->IDR & (1 << 4)) != 0) { }
+
+    for (int i = 0; i < 100; i++) {
+      // Wait for HREF active
+      while ((GPIOA->IDR & (1 << 4)) == 0) { }
+
+      int count = 0;
+      while (1) {
+        // Wait for PCLK rise
+        while ((GPIOA->IDR & (1 << 6)) == 0)
+          // If HREF ends, stop
+          if ((GPIOA->IDR & (1 << 4)) == 0) goto done2;
+
+        count++;
+        // Wait for PCLK fall
+        while ((GPIOA->IDR & (1 << 6)) != 0) { }
+      }
+    done2:
+      counts[i] = count;
+    }
+    swv_printf("counts %d\n", counts[0]);
+  }
+}
 
   // ======== DMA (DMA2 Stream 1 Channel 1) ========
   // For DCMI
@@ -302,6 +393,7 @@ int main()
   while (1) {
     uint32_t sum = 0;
     for (int i = 0; i < 15000; i++) sum += ((buf[i] >> 24) & 0xff) + ((buf[i] >> 8) & 0xff);
+  if (0)
     swv_printf("CR %08x, NDT %08x, PA %08x, M0A %08x, M1A %08x, LISR %08x, ErrorCode %08x | buf[0] %02x sum %08x line_count %5d frame_count %5d | DCMI DR %08x CR %08x MIS %08x\n",
       DMA2_Stream1->CR,
       DMA2_Stream1->NDTR,
@@ -373,7 +465,7 @@ int frame_lines[1000];
 int mis[9000];
 void DCMI_IRQHandler() {
   static int last_pixel_count = 0;
-  if (DCMI->MISR & DCMI_MIS_LINE_MIS) {
+  if (frame_count > 0 && (DCMI->MISR & DCMI_MIS_LINE_MIS)) {
     line_count++;
     if (line_count != 1 && line_count - 2 < 1000)
       line_pixels[line_count - 2] = (15000 - ((int)DMA2_Stream1->NDTR - last_pixel_count)) % 15000;
