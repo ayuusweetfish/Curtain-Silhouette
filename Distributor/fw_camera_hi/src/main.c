@@ -71,6 +71,8 @@ static uint32_t dcmi_buf[1280] = { 0xaa };
 static uint16_t running_x[120 * 160], running_x2[120 * 160];
 static uint16_t cur_sum[120 * 160] __attribute__ ((section(".ccmram")));
 
+static volatile bool frame_done = false;
+
 int main()
 {
   // CCMRAM variables need to be manually initialized
@@ -403,15 +405,42 @@ if (0) {
   HAL_DCMI_Start_DMA(&dcmi, DCMI_MODE_CONTINUOUS, (uint32_t)&dcmi_buf[0], dcmi_buf_size);
 
   while (1) {
+    while (!frame_done) { }
+
+    // Consume frame
+    // If this times out, an error will be raised by blinking Act 1
+    // Use `cur_sum[i] >> 4` for pixel values (Y)
+
     uint32_t sum = 0;
-    for (int i = 0; i < dcmi_buf_size; i++)
-      sum += ((dcmi_buf[i] >> 24) & 0xff) + ((dcmi_buf[i] >> 8) & 0xff);
-    /* if (sum > dcmi_buf_size * 2 * 60) {
+    for (int i = 0; i < 160 * 120; i++) sum += (cur_sum[i] >> 4);
+    if (sum > 160 * 120 * 60) {
       HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
     } else {
       HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
-    } */
-    HAL_Delay(300);
+    }
+
+    for (int it = 0; it < 15; it++) {
+      for (int i = 0; i < 160 * 120; i++) {
+        sum += (cur_sum[i] >> 2) + (cur_sum[i] ^ cur_sum[(i ^ 77) % (160 * 120)]);
+        sum ^= 0xaaaa;
+        sum += (sum >> 7);
+      }
+    }
+    if (0) {
+    // if (sum & 1) {
+    // static int p = 0; if ((p ^= 1) & 1) {
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
+    } else {
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
+    }
+
+    // Transmit SPI, this takes (32 * 200 / 2) * 8 bits / 21 MHz = 1 ms
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);
+    int result = HAL_SPI_Transmit(&spi2, spi_tx_buf, 32 * N_SUSPEND / 2, 1000);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
+
+    memset(cur_sum, 0, sizeof cur_sum);
+    frame_done = false;
   }
 
   // Test
@@ -464,16 +493,19 @@ void dcmi_error() {
 void DMA2_Stream1_IRQHandler() {
   HAL_DMA_IRQHandler(&dma2_st1_ch1);
 }
+#define CAPTURE_RATE 2  // Once every two frames
 int line_pixels[1000];
 int frame_lines[1000];
 void DCMI_IRQHandler() {
   uint32_t misr = DCMI->MISR;
+  uint32_t ndtr = DMA2_Stream1->NDTR;
+
+  HAL_DCMI_IRQHandler(&dcmi);
 
   // DMA counter starts at the beginning of the buffer
   static int last_pixel_count = dcmi_buf_size;
 
   if (frame_count > 0 && (misr & DCMI_MIS_LINE_MIS)) {
-    uint32_t ndtr = DMA2_Stream1->NDTR;
     if (ndtr == dcmi_buf_size) ndtr = 0;
     if (line_count < 1000)
       line_pixels[line_count] = last_pixel_count - ndtr;
@@ -489,10 +521,16 @@ void DCMI_IRQHandler() {
       return;
     }
 
-    for (int i = 0; i < 320; i++) {
-      uint8_t v1 = (dcmi_buf[start + i] >> 24) & 0xff;
-      uint8_t v2 = (dcmi_buf[start + i] >>  8) & 0xff;
-      cur_sum[(line_count / 4) * 160 + i / 2] += ((uint16_t)v1 + v2);
+    if (frame_count % CAPTURE_RATE == 1) {
+      if (frame_done) {
+        dcmi_error();
+        return;
+      }
+      for (int i = 0; i < 320; i++) {
+        uint8_t v1 = (dcmi_buf[start + i] >> 24) & 0xff;
+        uint8_t v2 = (dcmi_buf[start + i] >>  8) & 0xff;
+        cur_sum[(line_count / 4) * 160 + i / 2] += ((uint16_t)v1 + v2);
+      }
     }
 
     line_count++;
@@ -509,28 +547,17 @@ void DCMI_IRQHandler() {
       return;
     }
 
-    if (frame_count >= 1) {
+    if (frame_count >= 1 && frame_count % CAPTURE_RATE == 1) {
       // Process frame >o<
-      uint32_t sum = 0;
-      for (int i = 0; i < 160 * 120; i++) sum += (cur_sum[i] >> 4);
-      if (sum > 160 * 120 * 60) {
-        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
-      } else {
-        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
-      }
+      frame_done = true;
     }
 
     frame_count++;
     line_count = 0;
-
-    memset(cur_sum, 0, sizeof cur_sum);
   }
 
   running_x[0] = 0;
   running_x2[0] = 0;
-  cur_sum[0] = 0;
-
-  HAL_DCMI_IRQHandler(&dcmi);
 }
 
 void NMI_Handler() { while (1) { } }

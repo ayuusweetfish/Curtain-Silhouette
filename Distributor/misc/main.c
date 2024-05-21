@@ -94,7 +94,6 @@ int main(int argc, char *argv[])
 
         int r_cen = r_sum / qtail;
         int c_cen = c_sum / qtail;
-        // printf("%d %d\n", r_cen, c_cen);
         // Append to dots
         if (++n_dots > cap_dots) {
           cap_dots = (cap_dots == 0 ? 16 : cap_dots * 2);
