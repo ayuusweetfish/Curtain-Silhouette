@@ -804,12 +804,6 @@ void DCMI_IRQHandler() {
         return;
       }
 
-      for (int i = 0; i < 320; i++) {
-        uint8_t v1 = (dcmi_buf[start + i] >> 24) & 0xff;
-        uint8_t v2 = (dcmi_buf[start + i] >>  8) & 0xff;
-        cur_frame[(line_count / 4) * 160 + i / 2] += ((uint16_t)v1 + v2);
-      }
-
       static uint16_t pixel_4l[160] = { 0 };
 
       for (int i = 0; i < 320; i++) {

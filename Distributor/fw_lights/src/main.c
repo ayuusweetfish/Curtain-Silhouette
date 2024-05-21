@@ -229,13 +229,11 @@ int main()
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
+#define CONSTANT_LIGHTS
+#ifndef CONSTANT_LIGHTS
   HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 32 * N_SUSPEND / 2);
+#endif
   __HAL_DMA_DISABLE_IT(&dma1_ch1, DMA_IT_HT); // We don't need the half-transfer interrupt
-
-  while (0) {
-    swv_printf("data %02x %02x\n", (int)spi_rx_buf[0], (int)spi_rx_buf[1]);
-    HAL_Delay(400);
-  }
 
   inline uint32_t my_rand() {
     uint32_t seed = 2451023;
@@ -260,7 +258,7 @@ int main()
     // asm volatile ("MSR basepri, %0" : : "r" (0 << 4) : "memory");
 
     uint32_t cur;
-    while ((cur = HAL_GetTick()) - tick < 20) { }
+    while ((cur = HAL_GetTick()) - tick < 100) { }
     tick = cur;
 
 if (0) {
@@ -286,13 +284,32 @@ if (0) {
     process_lights();
  }
 
-if (0) {
+#ifdef CONSTANT_LIGHTS
+
+#define PIECE_INDEX 3
 
   static const uint8_t used_columns[25] = {
+#if PIECE_INDEX == 1
+     0,  2,  4,  5,
+     8,  9, 10, 12, 13, 14, 15,
+    16, 18, 19, 20, 21, 22, 23,
+    24, 26, 27, 28, 29, 30, 31,
+#elif PIECE_INDEX == 2
+     0,  2,  3,  5,  6,  7,
+     8,  9, 11, 12, 13, 15, 16,
+    18, 19, 21, 23, 24,
+    25, 26, 27, 28, 29, 30, 31,
+#elif PIECE_INDEX == 3
+     0,  1,  3,  4,  5,  6,
+     8,  9, 10, 11, 13, 14, 15,
+    16, 17, 18, 20, 21, 22,
+    24, 25, 27, 29, 30, 31,
+#elif PIECE_INDEX == 4
      0,  2,  3,  5,  6,
      8,  9, 11, 12, 13, 15,
     16, 17, 18, 19, 20, 22, 23,
     24, 25, 27, 28, 29, 30, 31,
+#endif
   };
 
   static const uint8_t underlying_pattern[200][25] = {
@@ -503,7 +520,7 @@ if (0) {
   }
   process_lights();
 
-}
+#endif
 
 
     if (++count % 50 == 0) {
