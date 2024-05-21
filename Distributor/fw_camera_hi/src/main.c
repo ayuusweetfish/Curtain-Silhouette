@@ -73,8 +73,13 @@ static uint32_t frame_count __attribute__ ((section(".ccmram")));
 static int last_pixel_count = dcmi_buf_size;
 static int last_line_count = 0;
 
-static uint16_t running_x[120 * 160], running_x2[120 * 160];
-static uint16_t cur_sum[120 * 160] __attribute__ ((section(".ccmram")));
+static uint16_t running_x[120 * 160];
+static uint16_t running_x2[120 * 160];
+static uint8_t running_count = 0;
+static uint8_t base_frame[120 * 160] __attribute__ ((section(".ccmram")));
+static bool base_frame_initialized = false;
+
+static uint8_t cur_frame[120 * 160] __attribute__ ((section(".ccmram")));
 
 static volatile bool frame_done = false;
 
@@ -226,8 +231,8 @@ int main()
     HAL_I2C_Mem_Write(&i2c2, 0x21 << 1, reg, I2C_MEMADD_SIZE_8BIT, &val, 1, 1000);
   }
 
-  // CLKRC: prescale by 2
-  camera_write_reg(0x11, 0b00000001);
+  // CLKRC: prescale by 1
+  camera_write_reg(0x11, 0b00000000);
 
 /*
   // QVGA YUV
@@ -424,7 +429,7 @@ if (0) {
 
     // if (++count == 20) dcmi_error();
 
-    memset(cur_sum, 0, sizeof cur_sum);
+    memset(cur_frame, 0, sizeof cur_frame);
     frame_done = false;
   }
 
@@ -478,20 +483,23 @@ void consume_init()
     }
 }
 
+static inline int16_t abs16(int16_t x)
+{
+  return (x < 0 ? -x : x);
+}
+
 // Consume frame
 // If this times out, an error will be raised by blinking Act 1
-// Use `cur_sum[i] >> 4` for pixel values (Y)
+#pragma GCC optimize("O3")
 void consume_frame()
 {
   uint32_t sum = 0;
-  for (int i = 0; i < 160 * 120; i++) sum += (cur_sum[i] >> 4);
+  for (int i = 0; i < 160 * 120; i++) sum += cur_frame[i];
   if (sum > 160 * 120 * 60) {
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
   } else {
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
   }
-
-  uint8_t average = sum / (120 * 160);
 
   static const uint8_t used_columns[25] = {
 /*
@@ -711,13 +719,13 @@ void consume_frame()
         // write_buf(c, r, average < noise[i][r] ? 3 : 0);
         // width 150 * height 100
         uint8_t pixel = (
-          (cur_sum[(r / 2) * 160 + i * 6 + 0]) +
-          (cur_sum[(r / 2) * 160 + i * 6 + 1]) +
-          (cur_sum[(r / 2) * 160 + i * 6 + 2]) +
-          (cur_sum[(r / 2) * 160 + i * 6 + 3]) +
-          (cur_sum[(r / 2) * 160 + i * 6 + 4]) +
-          (cur_sum[(r / 2) * 160 + i * 6 + 5])
-        ) / 96;
+          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 0] - 0) +
+          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 1] - 0) +
+          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 2] - 0) +
+          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 3] - 0) +
+          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 4] - 0) +
+          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 5] - 0)
+        ) / 6;
         // write_buf(c, r, pixel < 32 ? 0 : 3);
         write_buf(c, r, pixel / 64);
       }
@@ -763,9 +771,11 @@ void dcmi_error() {
 void DMA2_Stream1_IRQHandler() {
   HAL_DMA_IRQHandler(&dma2_st1_ch1);
 }
-#define CAPTURE_RATE 2  // Once every two frames
+#define CAPTURE_RATE 3  // Once every two frames
 int line_pixels[1000];
 int frame_lines[1000];
+
+#pragma GCC optimize("O3")
 void DCMI_IRQHandler() {
   uint32_t misr = DCMI->MISR;
   uint32_t ndtr = DMA2_Stream1->NDTR;
@@ -788,15 +798,34 @@ void DCMI_IRQHandler() {
       return;
     }
 
-    if (frame_count % CAPTURE_RATE == 1) {
+    if (frame_count % CAPTURE_RATE == 1 % CAPTURE_RATE) {
       if (frame_done) {
         dcmi_error();
         return;
       }
+
       for (int i = 0; i < 320; i++) {
         uint8_t v1 = (dcmi_buf[start + i] >> 24) & 0xff;
         uint8_t v2 = (dcmi_buf[start + i] >>  8) & 0xff;
-        cur_sum[(line_count / 4) * 160 + i / 2] += ((uint16_t)v1 + v2);
+        cur_frame[(line_count / 4) * 160 + i / 2] += ((uint16_t)v1 + v2);
+      }
+
+      static uint16_t pixel_4l[160] = { 0 };
+
+      for (int i = 0; i < 320; i++) {
+        uint8_t v1 = (dcmi_buf[start + i] >> 24) & 0xff;
+        uint8_t v2 = (dcmi_buf[start + i] >>  8) & 0xff;
+        if (line_count % 4 == 0) pixel_4l[i / 2] = 0;
+        pixel_4l[i / 2] += ((uint16_t)v1 + v2);
+      }
+
+      if (line_count % 4 == 3) {
+        for (int i = 0; i < 160; i++) {
+          uint16_t pixel = pixel_4l[i] >> 4;
+          cur_frame[(line_count / 4) * 160 + i] = pixel;
+          running_x[(line_count / 4) * 160 + i] += pixel / 4;
+          running_x2[(line_count / 4) * 160 + i] += (uint16_t)(pixel / 4) * (pixel / 4);
+        }
       }
     }
 
@@ -813,17 +842,23 @@ void DCMI_IRQHandler() {
       return;
     }
 
-    if (frame_count >= 1 && frame_count % CAPTURE_RATE == 1) {
+    if (frame_count >= 1 && frame_count % CAPTURE_RATE == 1 % CAPTURE_RATE) {
       // Process frame >o<
       frame_done = true;
+
+      // Process base frame
+      running_count++;
+      if (running_count == 16) {
+        running_count = 0;
+        for (int i = 0; i < 120 * 160; i++)
+          base_frame[i] = running_x[i] / 16;
+        base_frame_initialized = true;
+      }
     }
 
     frame_count++;
     line_count = 0;
   }
-
-  running_x[0] = 0;
-  running_x2[0] = 0;
 }
 
 void NMI_Handler() { while (1) { } }
