@@ -73,6 +73,9 @@ static uint16_t cur_sum[120 * 160] __attribute__ ((section(".ccmram")));
 
 static volatile bool frame_done = false;
 
+inline void consume_init();
+inline void consume_frame();
+
 int main()
 {
   // CCMRAM variables need to be manually initialized
@@ -404,40 +407,12 @@ if (0) {
 
   HAL_DCMI_Start_DMA(&dcmi, DCMI_MODE_CONTINUOUS, (uint32_t)&dcmi_buf[0], dcmi_buf_size);
 
+  consume_init();
+
   while (1) {
     while (!frame_done) { }
 
-    // Consume frame
-    // If this times out, an error will be raised by blinking Act 1
-    // Use `cur_sum[i] >> 4` for pixel values (Y)
-
-    uint32_t sum = 0;
-    for (int i = 0; i < 160 * 120; i++) sum += (cur_sum[i] >> 4);
-    if (sum > 160 * 120 * 60) {
-      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
-    } else {
-      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
-    }
-
-    for (int it = 0; it < 15; it++) {
-      for (int i = 0; i < 160 * 120; i++) {
-        sum += (cur_sum[i] >> 2) + (cur_sum[i] ^ cur_sum[(i ^ 77) % (160 * 120)]);
-        sum ^= 0xaaaa;
-        sum += (sum >> 7);
-      }
-    }
-    if (0) {
-    // if (sum & 1) {
-    // static int p = 0; if ((p ^= 1) & 1) {
-      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
-    } else {
-      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
-    }
-
-    // Transmit SPI, this takes (32 * 200 / 2) * 8 bits / 21 MHz = 1 ms
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);
-    int result = HAL_SPI_Transmit(&spi2, spi_tx_buf, 32 * N_SUSPEND / 2, 1000);
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
+    consume_frame();
 
     memset(cur_sum, 0, sizeof cur_sum);
     frame_done = false;
@@ -477,6 +452,107 @@ if (0) {
     swv_printf("SPI tx result = %d\n", result);
   }
 
+}
+
+static uint8_t noise[25][200];
+
+void consume_init()
+{
+  uint32_t seed = 240521;
+  for (int i = 0; i < 25; i++)
+    for (int j = 0; j < 200; j++) {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      noise[i][j] = ((seed >> 7) ^ (seed >> 18)) & 0xff;
+    }
+}
+
+// Consume frame
+// If this times out, an error will be raised by blinking Act 1
+// Use `cur_sum[i] >> 4` for pixel values (Y)
+void consume_frame()
+{
+  uint32_t sum = 0;
+  for (int i = 0; i < 160 * 120; i++) sum += (cur_sum[i] >> 4);
+  if (sum > 160 * 120 * 60) {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
+  } else {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
+  }
+
+  uint8_t average = sum / (120 * 160);
+
+  static const uint8_t used_columns[25] = {
+     0,  1,  2,  3,  4,  5,  6, 
+     8,  9, 10, 11, 12, 13, 14,
+    16, 17, 18, 19, 20, 21, 22,
+    25, 26, 27, 28
+  };
+
+  static const uint8_t underlying_pattern[200][25] = {
+{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+{1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1},
+{1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+{1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1},
+  };
+
+  memset(spi_tx_buf, 0xff, sizeof spi_tx_buf);
+#define write_buf(_strip, _suspend, _value) \
+  (spi_tx_buf[((_strip) * N_SUSPEND + (_suspend)) / 2] |= ((_value) << ((_suspend) % 2 == 0 ? 0 : 4)))
+
+  for (int i = 0; i < 25; i++) {
+    int c = used_columns[i];
+    for (int r = 0; r < 200; r++) {
+      if (underlying_pattern[r][i])
+        write_buf(c, r, average < noise[i][r] ? 3 : 0);
+    }
+  }
+
+#undef write_buf
+
+  // Transmit SPI, this takes (32 * 200 / 2) * 8 bits / 21 MHz = 1 ms
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);
+  int result = HAL_SPI_Transmit(&spi2, spi_tx_buf, 32 * N_SUSPEND / 2, 1000);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
 }
 
 void SysTick_Handler()
