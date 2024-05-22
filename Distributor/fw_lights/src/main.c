@@ -57,6 +57,18 @@ uint8_t out_buf_cd[N_SUSPEND][3] = {{ 0 }};
 inline void process_lights();
 inline void run();
 
+#define PIECE_INDEX 1
+#ifdef PIECE_INDEX
+  #define CONSTANT_LIGHTS
+  #if PIECE_INDEX == 1
+    #include "../../misc/sequence_parser/anim_seq_1.h"
+  #elif PIECE_INDEX == 2
+    #include "../../misc/sequence_parser/anim_seq_2.h"
+  #elif PIECE_INDEX == 3
+    #include "../../misc/sequence_parser/anim_seq_3.h"
+  #endif
+#endif
+
 int main()
 {
   HAL_Init();
@@ -229,7 +241,6 @@ int main()
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
-#define CONSTANT_LIGHTS
 #ifndef CONSTANT_LIGHTS
   HAL_SPI_Receive_DMA(&spi2, spi_rx_buf, 32 * N_SUSPEND / 2);
 #endif
@@ -261,32 +272,7 @@ int main()
     while ((cur = HAL_GetTick()) - tick < 100) { }
     tick = cur;
 
-if (0) {
-    static int phase = 0;
-
-    for (int i = 0; i < sizeof spi_rx_buf / sizeof spi_rx_buf[0]; i++)
-      spi_rx_buf[i] = 0;
-
-    if (count % 2 == 0) phase = (phase + 1) % 8;
-    for (int strip = 0; strip < 8; strip++) {
-      for (int i = 0; i < N_SUSPEND; i++) {
-        uint8_t value;
-        if (i % 8 == (strip + count / 50) % 8) value = 0xf;
-        else {
-          int x = (i / 2 + phase) % 8;
-          value = (x >= 4 ? (7 - x) : x);
-          // x = (i / 2) % 8;
-          // value = (x < 4 ? 0 : 3);
-        }
-        spi_rx_buf[(strip * N_SUSPEND + i) / 2] |= (value << (i % 2 == 0 ? 0 : 4));
-      }
-    }
-    process_lights();
- }
-
 #ifdef CONSTANT_LIGHTS
-
-#define PIECE_INDEX 1
 
   static const uint8_t used_columns[25] = {
 #if PIECE_INDEX == 1
@@ -511,11 +497,18 @@ if (0) {
   (spi_rx_buf[((_strip) * N_SUSPEND + (_suspend)) / 2] &= \
     ((_suspend) % 2 == 0 ? ((_value) | 0xf0) : (0x0f | ((_value) << 4))))
 
+  static uint32_t anim_frame_ctr = 0;
+  // 10 FPS / 1 = 10 FPS
+  // TODO: Verify this can be temporally upsampled
+  uint32_t anim_frame_i = anim_frame_ctr / 1;
+  if (++anim_frame_ctr == anim_n_frames * 1) anim_frame_ctr = 0;
+
   for (int i = 0; i < 25; i++) {
     int c = used_columns[i];
-    for (int r = 0; r < 200; r++) {
+    for (int r = 0; r < 190; r++) {
       if (underlying_pattern[r][i])
-        write_buf(c, r, 0);
+        write_buf(c, r,
+          (anim_seq[anim_frame_i][i][r / 8] & (1 << (7 - r % 8))) ? 3 : 0);
     }
   }
   process_lights();
@@ -638,7 +631,7 @@ void process_lights()
   \
   uint16_t bitsB = (_bitsB); \
   \
-  while (TIM3->CNT < 16) { } \
+  while (TIM3->CNT < 24) { } \
   GPIO##_portA->ODR = bitsA; \
   GPIO##_portB->ODR = bitsB; \
   \
