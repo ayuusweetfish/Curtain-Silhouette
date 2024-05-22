@@ -286,7 +286,7 @@ if (0) {
 
 #ifdef CONSTANT_LIGHTS
 
-#define PIECE_INDEX 3
+#define PIECE_INDEX 1
 
   static const uint8_t used_columns[25] = {
 #if PIECE_INDEX == 1
@@ -515,7 +515,7 @@ if (0) {
     int c = used_columns[i];
     for (int r = 0; r < 200; r++) {
       if (underlying_pattern[r][i])
-        write_buf(c, r, 3);
+        write_buf(c, r, 0);
     }
   }
   process_lights();

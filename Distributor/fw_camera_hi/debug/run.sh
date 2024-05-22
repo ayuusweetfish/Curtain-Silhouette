@@ -1,5 +1,6 @@
 # ~/.platformio/packages/tool-openocd/bin/openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -d1
 # (cd ~/Downloads/stlink; build/Release/bin/st-info --probe)
+# ~/.platformio/packages/tool-openocd/bin/openocd -d2 -s ~/.platformio/packages/tool-openocd/openocd/scripts -f interface/cmsis-dap.cfg -c "transport select swd" -f target/stm32f4x.cfg -c "init; dap info; shutdown;"
 
 cat >debug/gdbinit <<EOF
 define hook-quit
