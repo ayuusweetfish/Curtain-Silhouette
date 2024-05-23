@@ -413,6 +413,8 @@ if (0) {
   // HAL_DCMI_ConfigCrop(&dcmi, 0, 0, 640 * 2, 480);
   // HAL_DCMI_EnableCrop(&dcmi);
 
+  memset(base_frame, 0, sizeof base_frame);
+
   HAL_NVIC_SetPriority(DCMI_IRQn, 2, 1);
   HAL_NVIC_EnableIRQ(DCMI_IRQn);
 
@@ -718,24 +720,24 @@ void consume_frame()
       if (underlying_pattern[r][i]) {
         // write_buf(c, r, average < noise[i][r] ? 3 : 0);
         // width 150 * height 100
-        uint8_t pixel = (
+        uint16_t pixel = (
+          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 0] - base_frame[(r / 2) * 160 + i * 6 + 0]) +
+          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 1] - base_frame[(r / 2) * 160 + i * 6 + 1]) +
+          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 2] - base_frame[(r / 2) * 160 + i * 6 + 2]) +
+          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 3] - base_frame[(r / 2) * 160 + i * 6 + 3]) +
+          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 4] - base_frame[(r / 2) * 160 + i * 6 + 4]) +
+          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 5] - base_frame[(r / 2) * 160 + i * 6 + 5])
         /*
-          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 0] - 0) +
-          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 1] - 0) +
-          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 2] - 0) +
-          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 3] - 0) +
-          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 4] - 0) +
-          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 5] - 0)
-        */
           (int16_t)cur_frame[(r / 2) * 160 + i * 6 + 0] +
           (int16_t)cur_frame[(r / 2) * 160 + i * 6 + 1] +
           (int16_t)cur_frame[(r / 2) * 160 + i * 6 + 2] +
           (int16_t)cur_frame[(r / 2) * 160 + i * 6 + 3] +
           (int16_t)cur_frame[(r / 2) * 160 + i * 6 + 4] +
           (int16_t)cur_frame[(r / 2) * 160 + i * 6 + 5]
+        */
         ) / 6;
         // write_buf(c, r, pixel < 32 ? 0 : 3);
-        write_buf(c, r, pixel < 128 ? 0 : 3);
+        write_buf(c, r, pixel < 96 ? 0 : 3);
       }
     }
   }
@@ -780,6 +782,8 @@ void DMA2_Stream1_IRQHandler() {
   HAL_DMA_IRQHandler(&dma2_st1_ch1);
 }
 #define CAPTURE_RATE 3  // Once every two frames
+
+static volatile uint32_t running_sum[16] = { 0 };
 
 #pragma GCC optimize("O3")
 void DCMI_IRQHandler() {
@@ -850,8 +854,24 @@ void DCMI_IRQHandler() {
       running_count++;
       if (running_count == 16) {
         running_count = 0;
+
+/*
+        uint32_t sum = 0;
+        // Sum(x[i]^2 - x2[i] * 16)
         for (int i = 0; i < 120 * 160; i++)
-          base_frame[i] = running_x[i] / 16;
+          sum += (uint32_t)running_x[i] * running_x[i] + (uint32_t)running_x2[i] * 16;
+
+        static uint16_t ptr = 0;
+        running_sum[ptr] = sum;
+        ptr = (ptr + 1) % 16;
+*/
+
+        for (int i = 0; i < 120 * 160; i++)
+          base_frame[i] = ((uint16_t)base_frame * 3 + running_x[i] / 16) / 4;
+        /* if (!base_frame_initialized) {
+          HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); HAL_Delay(50);
+          HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
+        } */
         base_frame_initialized = true;
       }
     }
