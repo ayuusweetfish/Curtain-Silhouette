@@ -76,7 +76,7 @@ static int last_line_count = 0;
 static uint16_t running_x[120 * 160];
 static uint16_t running_x2[120 * 160];
 static uint8_t running_count = 0;
-static uint8_t base_frame[120 * 160] __attribute__ ((section(".ccmram")));
+static volatile uint8_t base_frame[120 * 160] __attribute__ ((section(".ccmram")));
 static bool base_frame_initialized = false;
 
 static uint8_t cur_frame[120 * 160] __attribute__ ((section(".ccmram")));
@@ -719,15 +719,23 @@ void consume_frame()
         // write_buf(c, r, average < noise[i][r] ? 3 : 0);
         // width 150 * height 100
         uint8_t pixel = (
+        /*
           abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 0] - 0) +
           abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 1] - 0) +
           abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 2] - 0) +
           abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 3] - 0) +
           abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 4] - 0) +
           abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 5] - 0)
+        */
+          (int16_t)cur_frame[(r / 2) * 160 + i * 6 + 0] +
+          (int16_t)cur_frame[(r / 2) * 160 + i * 6 + 1] +
+          (int16_t)cur_frame[(r / 2) * 160 + i * 6 + 2] +
+          (int16_t)cur_frame[(r / 2) * 160 + i * 6 + 3] +
+          (int16_t)cur_frame[(r / 2) * 160 + i * 6 + 4] +
+          (int16_t)cur_frame[(r / 2) * 160 + i * 6 + 5]
         ) / 6;
         // write_buf(c, r, pixel < 32 ? 0 : 3);
-        write_buf(c, r, pixel / 64);
+        write_buf(c, r, pixel < 128 ? 0 : 3);
       }
     }
   }
@@ -772,8 +780,6 @@ void DMA2_Stream1_IRQHandler() {
   HAL_DMA_IRQHandler(&dma2_st1_ch1);
 }
 #define CAPTURE_RATE 3  // Once every two frames
-int line_pixels[1000];
-int frame_lines[1000];
 
 #pragma GCC optimize("O3")
 void DCMI_IRQHandler() {
@@ -784,8 +790,6 @@ void DCMI_IRQHandler() {
 
   if (frame_count > 0 && (misr & DCMI_MIS_LINE_MIS)) {
     if (ndtr == dcmi_buf_size) ndtr = 0;
-    if (line_count < 1000)
-      line_pixels[line_count] = last_pixel_count - ndtr;
 
     if (last_pixel_count - ndtr != 320) {
       dcmi_error();
@@ -825,12 +829,14 @@ void DCMI_IRQHandler() {
 
     line_count++;
     last_pixel_count = (ndtr == 0 ? dcmi_buf_size : ndtr);
+
+    if (line_count > 480) {
+      dcmi_error();
+      return;
+    }
   }
 
   if (misr & DCMI_MIS_VSYNC_MIS) {
-    if (frame_count >= 1 && frame_count - 1 < 1000)
-      frame_lines[frame_count - 1] = line_count;
-
     if (frame_count >= 1 && line_count != 480) {
       dcmi_error();
       return;
