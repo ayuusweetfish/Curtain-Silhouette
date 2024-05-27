@@ -491,6 +491,12 @@ static inline int16_t abs16(int16_t x)
 #pragma GCC optimize("O3")
 void consume_frame()
 {
+  if (silhouette_end_frame()) {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
+  } else {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
+  }
+
   uint32_t sum = 0;
   const uint8_t *cur_frame = silhouette_cur_frame();
   for (int i = 0; i < 160 * 120; i++) sum += cur_frame[i];
@@ -784,6 +790,7 @@ void DCMI_IRQHandler() {
     if (ndtr == dcmi_buf_size) ndtr = 0;
 
     if (last_pixel_count - ndtr != 320) {
+      swv_printf("line has %u words\n", last_pixel_count - ndtr);
       dcmi_error();
       return;
     }
@@ -796,6 +803,7 @@ void DCMI_IRQHandler() {
 
     if (frame_count % CAPTURE_RATE == 1 % CAPTURE_RATE) {
       if (frame_done) {
+        swv_printf("processing timed out\n");
         dcmi_error();
         return;
       }
@@ -807,6 +815,7 @@ void DCMI_IRQHandler() {
     last_pixel_count = (ndtr == 0 ? dcmi_buf_size : ndtr);
 
     if (line_count > 480) {
+      swv_printf("frame has %u lines\n", line_count);
       dcmi_error();
       return;
     }
@@ -821,8 +830,6 @@ void DCMI_IRQHandler() {
     if (frame_count >= 1 && frame_count % CAPTURE_RATE == 1 % CAPTURE_RATE) {
       // Process frame >o<
       frame_done = true;
-
-      silhouette_end_frame();
     }
 
     frame_count++;

@@ -2,7 +2,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 #define _silhouette_this_arg struct silhouette_detection *d
@@ -85,9 +84,6 @@ static inline void silhouette_feed_line(_silhouette_this_arg_ uint32_t *buf)
       _d(cur_frame)[(_d(line_count) / 4) * 160 + i] = pixel;
       _d(running_x)[(_d(line_count) / 4) * 160 + i] += pixel / 4;
       _d(running_x2)[(_d(line_count) / 4) * 160 + i] += (uint16_t)(pixel / 4) * (pixel / 4);
-      if (0 && _d(line_count) == 239 && i == 0) {
-        printf(">> %3d %10u %10u\n", (int)pixel, _d(running_x)[(_d(line_count) / 4) * 160 + i], _d(running_x2)[(_d(line_count) / 4) * 160 + i]);
-      }
     }
   }
 
@@ -99,9 +95,13 @@ static inline uint8_t absdiff8(uint8_t a, uint8_t b)
   return (a > b ? a - b : b - a);
 }
 
-static inline void silhouette_end_frame(_silhouette_this_arg)
+#pragma GCC optimize("O3")
+static inline bool silhouette_end_frame(_silhouette_this_arg)
 {
+  _d(line_count) = 0;
   _d(running_count)++;
+
+  bool updated = false;
 
   if (_d(running_count) == 16) {
     _d(running_count) = 0;
@@ -110,6 +110,7 @@ static inline void silhouette_end_frame(_silhouette_this_arg)
     // Sum(x[i]^2 - x2[i] * 16)
     for (int i = 0; i < 120 * 160; i++)
       sum += (uint32_t)_d(running_x2)[i] * 16 - (uint32_t)_d(running_x)[i] * _d(running_x)[i];
+  /*
     for (int r = 0; r < 120; r += 3) {
       for (int c = 0; c < 160; c += 2) {
         uint32_t i = r * 160 + c;
@@ -119,6 +120,7 @@ static inline void silhouette_end_frame(_silhouette_this_arg)
       putchar('\n');
     }
     printf("sum = %u, avg var = %u\n", (unsigned)sum, (unsigned)(sum / (16 * 160 * 120)));
+  */
 
     if (sum / (16 * 160 * 120) < 30) {
       if (!_d(base_initialized)) {
@@ -130,13 +132,15 @@ static inline void silhouette_end_frame(_silhouette_this_arg)
         for (int i = 0; i < 120 * 160; i++)
           _d(base_frame)[i] = ((uint16_t)_d(base_frame)[i] * 3 + _d(running_x)[i] / 4) / 4;
       }
+
+      updated = true;
     }
 
     memset(_d(running_x), 0, sizeof _d(running_x));
     memset(_d(running_x2), 0, sizeof _d(running_x2));
   }
 
-  _d(line_count) = 0;
+  return updated;
 }
 
 static inline const uint8_t *silhouette_base_frame(_silhouette_this_arg)
@@ -157,6 +161,11 @@ static inline const uint8_t *silhouette_residual_frame(_silhouette_this_arg)
   }
 
   return _d(cur_frame);
+}
+
+static inline bool silhouette_base_initialized(_silhouette_this_arg)
+{
+  return _d(base_initialized);
 }
 
 #undef _d
