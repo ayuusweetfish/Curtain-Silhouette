@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 static void cb_keyboard(struct mfb_window *window, mfb_key key, mfb_key_mod mod, bool is_pressed)
@@ -30,10 +31,11 @@ int main()
 {
   // ============ MiniFB initialisation ============
 
-  struct mfb_window *window = mfb_open_ex("camera test", 320, 240, WF_RESIZABLE);
+  struct mfb_window *window = mfb_open_ex("camera test", 320, 720, WF_RESIZABLE);
   mfb_set_keyboard_callback(window, cb_keyboard);
 
-  uint8_t *p = malloc(640 * 480 * 4);
+  uint8_t *p = malloc(640 * (480 * 3) * 4);
+  memset(p, 0, 640 * (480 * 3) * 4);
 
   // ============ OpenPnP Capture initialisation ============
 
@@ -111,9 +113,38 @@ int main()
         silhouette_feed_line(&d, (uint32_t *)p_ycbcr);
       }
       silhouette_end_frame(&d);
+
+      const uint8_t *base = silhouette_base_frame(&d);
+      const uint8_t *resi = silhouette_residual_frame(&d);
+
+      for (int r = 0; r < 120; r++) {
+        for (int c = 0; c < 160; c++) {
+          uint8_t luma = base[r * 160 + c];
+          // Fill 4*4 block in reference frame
+          for (int dr = 0; dr < 4; dr++) {
+            for (int dc = 0; dc < 4; dc++) {
+              p[((480 + r * 4 + dr) * 640 + c * 4 + dc) * 4 + 0] =
+              p[((480 + r * 4 + dr) * 640 + c * 4 + dc) * 4 + 1] =
+              p[((480 + r * 4 + dr) * 640 + c * 4 + dc) * 4 + 2] = luma;
+              p[((480 + r * 4 + dr) * 640 + c * 4 + dc) * 4 + 3] = 255;
+            }
+          }
+
+          uint8_t diff = resi[r * 160 + c];
+          // Fill 4*4 block in difference
+          for (int dr = 0; dr < 4; dr++) {
+            for (int dc = 0; dc < 4; dc++) {
+              p[((960 + r * 4 + dr) * 640 + c * 4 + dc) * 4 + 0] =
+              p[((960 + r * 4 + dr) * 640 + c * 4 + dc) * 4 + 1] =
+              p[((960 + r * 4 + dr) * 640 + c * 4 + dc) * 4 + 2] = diff;
+              p[((960 + r * 4 + dr) * 640 + c * 4 + dc) * 4 + 3] = 255;
+            }
+          }
+        }
+      }
     }
 
-    mfb_update_ex(window, p, 640, 480);
+    mfb_update_ex(window, p, 640, 480 * 3);
   } while (mfb_wait_sync(window));
 
   free(p);
