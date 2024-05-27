@@ -8,7 +8,9 @@
 
 #include "mlx90640/MLX90640_API.h"
 
-// #define RELEASE
+#define PIECE_INDEX 1
+
+#define RELEASE
 #ifndef RELEASE
 #define _release_inline
 static uint8_t swv_buf[256];
@@ -469,16 +471,8 @@ if (0) {
 
 }
 
-static uint8_t noise[25][200];
-
 void consume_init()
 {
-  uint32_t seed = 240521;
-  for (int i = 0; i < 25; i++)
-    for (int j = 0; j < 200; j++) {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      noise[i][j] = ((seed >> 7) ^ (seed >> 18)) & 0xff;
-    }
 }
 
 static inline int16_t abs16(int16_t x)
@@ -492,31 +486,35 @@ static inline int16_t abs16(int16_t x)
 void consume_frame()
 {
   if (silhouette_end_frame()) {
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
-  } else {
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
-  }
-
-  uint32_t sum = 0;
-  const uint8_t *cur_frame = silhouette_cur_frame();
-  for (int i = 0; i < 160 * 120; i++) sum += cur_frame[i];
-  if (sum > 160 * 120 * 60) {
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
   } else {
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
   }
 
   static const uint8_t used_columns[25] = {
-/*
-     0,  1,  2,  3,  4,  5,  6, 
-     8,  9, 10, 11, 12, 13, 14,
-    16, 17, 18, 19, 20, 21, 22,
-    25, 26, 27, 28
-*/
+#if PIECE_INDEX == 1
+     0,  2,  4,  5,
+     8,  9, 10, 12, 13, 14, 15,
+    16, 18, 19, 20, 21, 22, 23,
+    24, 26, 27, 28, 29, 30, 31,
+#elif PIECE_INDEX == 2
+     0,  2,  3,  5,  6,  7,
+     8,  9, 11, 12, 13, 15, 16,
+    18, 19, 21, 23, 24,
+    25, 26, 27, 28, 29, 30, 31,
+#elif PIECE_INDEX == 3
+     0,  1,  3,  4,  5,  6,
+     8,  9, 10, 11, 13, 14, 15,
+    16, 17, 18, 20, 21, 22,
+    24, 25, 27, 29, 30, 31,
+#elif PIECE_INDEX == 4
      0,  2,  3,  5,  6,
      8,  9, 11, 12, 13, 15,
     16, 17, 18, 19, 20, 22, 23,
     24, 25, 27, 28, 29, 30, 31,
+#else
+    #error Please define PIECE_INDEX
+#endif
   };
 
   static const uint8_t underlying_pattern[200][25] = {
@@ -775,7 +773,8 @@ void dcmi_error() {
 void DMA2_Stream1_IRQHandler() {
   HAL_DMA_IRQHandler(&dma2_st1_ch1);
 }
-#define CAPTURE_RATE 3  // Once every two frames
+#define CAPTURE_RATE 2  // Once every two frames
+#define ACCUM_RATE   2  // Once every four frames
 
 static volatile uint32_t running_sum[16] = { 0 };
 
@@ -808,7 +807,7 @@ void DCMI_IRQHandler() {
         return;
       }
 
-      silhouette_feed_line(dcmi_buf + start);
+      silhouette_feed_line(dcmi_buf + start, (frame_count / CAPTURE_RATE) % ACCUM_RATE == 1 % ACCUM_RATE);
     }
 
     line_count++;
@@ -834,6 +833,10 @@ void DCMI_IRQHandler() {
 
     frame_count++;
     line_count = 0;
+
+    // Prevent overflow
+    if (frame_count >= 1 + CAPTURE_RATE * ACCUM_RATE)
+      frame_count -= CAPTURE_RATE * ACCUM_RATE;
   }
 }
 

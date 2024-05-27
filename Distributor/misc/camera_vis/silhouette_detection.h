@@ -54,6 +54,8 @@ struct silhouette_detection {
   _silhouette_field uint8_t _silhouette_field_name(running_count);
   _silhouette_field bool _silhouette_field_name(base_initialized);
 
+  _silhouette_field bool _silhouette_field_name(cur_frame_accum);
+
 #if !SILHOUETTE_SINGLETON
 };
 #endif
@@ -69,7 +71,7 @@ static inline void silhouette_init(_silhouette_this_arg)
   memset(_d(running_x2), 0, sizeof _d(running_x2));
 }
 
-static inline void silhouette_feed_line(_silhouette_this_arg_ uint32_t *buf)
+static inline void silhouette_feed_line(_silhouette_this_arg_ uint32_t *buf, bool accum_base)
 {
   for (int i = 0; i < 320; i++) {
     uint8_t v1 = (buf[i] >> 24) & 0xff;
@@ -82,12 +84,15 @@ static inline void silhouette_feed_line(_silhouette_this_arg_ uint32_t *buf)
     for (int i = 0; i < 160; i++) {
       uint16_t pixel = _d(pixel_4l)[i] >> 4;
       _d(cur_frame)[(_d(line_count) / 4) * 160 + i] = pixel;
-      _d(running_x)[(_d(line_count) / 4) * 160 + i] += pixel / 4;
-      _d(running_x2)[(_d(line_count) / 4) * 160 + i] += (uint16_t)(pixel / 4) * (pixel / 4);
+      if (accum_base) {
+        _d(running_x)[(_d(line_count) / 4) * 160 + i] += pixel / 4;
+        _d(running_x2)[(_d(line_count) / 4) * 160 + i] += (uint16_t)(pixel / 4) * (pixel / 4);
+      }
     }
   }
 
   _d(line_count)++;
+  _d(cur_frame_accum) = accum_base;
 }
 
 static inline uint8_t absdiff8(uint8_t a, uint8_t b)
@@ -99,7 +104,7 @@ static inline uint8_t absdiff8(uint8_t a, uint8_t b)
 static inline bool silhouette_end_frame(_silhouette_this_arg)
 {
   _d(line_count) = 0;
-  _d(running_count)++;
+  if (_d(cur_frame_accum)) _d(running_count)++;
 
   bool updated = false;
 
