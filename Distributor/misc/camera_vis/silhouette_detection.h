@@ -5,10 +5,18 @@
 #include <stdio.h>
 #include <string.h>
 
+#define _silhouette_this_arg struct silhouette_detection *d
+#define _silhouette_this_arg_ struct silhouette_detection *d,
 #if SILHOUETTE_SINGLETON
   #define _d(_field) (_silhouette_f_##_field)
   #define _silhouette_field static
   #define _silhouette_field_name(_field) (_silhouette_f_##_field)
+  #if SILHOUETTE_SINGLETON_NO_THIS
+    #undef _silhouette_this_arg
+    #undef _silhouette_this_arg_
+    #define _silhouette_this_arg
+    #define _silhouette_this_arg_
+  #endif
 #else
   #define _d(_field) (d->_field)
   #define _silhouette_field
@@ -51,7 +59,7 @@ struct silhouette_detection {
 };
 #endif
 
-static inline void silhouette_init(struct silhouette_detection *d)
+static inline void silhouette_init(_silhouette_this_arg)
 {
   memset(_d(pixel_4l), 0, sizeof _d(pixel_4l));
   _d(line_count) = 0;
@@ -62,7 +70,7 @@ static inline void silhouette_init(struct silhouette_detection *d)
   memset(_d(running_x2), 0, sizeof _d(running_x2));
 }
 
-static inline void silhouette_feed_line(struct silhouette_detection *d, uint32_t *buf)
+static inline void silhouette_feed_line(_silhouette_this_arg_ uint32_t *buf)
 {
   for (int i = 0; i < 320; i++) {
     uint8_t v1 = (buf[i] >> 24) & 0xff;
@@ -91,7 +99,7 @@ static inline uint8_t absdiff8(uint8_t a, uint8_t b)
   return (a > b ? a - b : b - a);
 }
 
-static inline void silhouette_end_frame(struct silhouette_detection *d)
+static inline void silhouette_end_frame(_silhouette_this_arg)
 {
   _d(running_count)++;
 
@@ -128,24 +136,31 @@ static inline void silhouette_end_frame(struct silhouette_detection *d)
     memset(_d(running_x2), 0, sizeof _d(running_x2));
   }
 
+  _d(line_count) = 0;
+}
+
+static inline const uint8_t *silhouette_base_frame(_silhouette_this_arg)
+{
+  return _d(base_frame);
+}
+
+static inline const uint8_t *silhouette_cur_frame(_silhouette_this_arg)
+{
+  return _d(cur_frame);
+}
+
+static inline const uint8_t *silhouette_residual_frame(_silhouette_this_arg)
+{
   // Subtract current frame with base frame
   for (int i = 0; i < 160 * 120; i++) {
     _d(cur_frame)[i] = absdiff8(_d(cur_frame)[i], _d(base_frame)[i]);
   }
 
-  _d(line_count) = 0;
-}
-
-static inline const uint8_t *silhouette_base_frame(struct silhouette_detection *d)
-{
-  return _d(base_frame);
-}
-
-static inline const uint8_t *silhouette_residual_frame(struct silhouette_detection *d)
-{
   return _d(cur_frame);
 }
 
 #undef _d
 #undef _silhouette_field
 #undef _silhouette_field_name
+#define _silhouette_this_arg
+#define _silhouette_this_arg_

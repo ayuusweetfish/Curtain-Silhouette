@@ -71,15 +71,12 @@ static uint32_t frame_count __attribute__ ((section(".ccmram")));
 
 // DMA counter starts at the beginning of the buffer
 static int last_pixel_count = dcmi_buf_size;
-static int last_line_count = 0;
 
-static uint16_t running_x[120 * 160];
-static uint16_t running_x2[120 * 160];
-static uint8_t running_count = 0;
-static volatile uint8_t base_frame[120 * 160] __attribute__ ((section(".ccmram")));
-static bool base_frame_initialized = false;
-
-static uint8_t cur_frame[120 * 160] __attribute__ ((section(".ccmram")));
+#define SILHOUETTE_SINGLETON 1
+#define SILHOUETTE_SINGLETON_NO_THIS 1
+#define SILHOUETTE_BASE_FRAME_ATTR __attribute__ ((section(".ccmram")))
+#define SILHOUETTE_CUR_FRAME_ATTR __attribute__ ((section(".ccmram")))
+#include "../../misc/camera_vis/silhouette_detection.h"
 
 static volatile bool frame_done = false;
 
@@ -413,7 +410,7 @@ if (0) {
   // HAL_DCMI_ConfigCrop(&dcmi, 0, 0, 640 * 2, 480);
   // HAL_DCMI_EnableCrop(&dcmi);
 
-  memset(base_frame, 0, sizeof base_frame);
+  silhouette_init();
 
   HAL_NVIC_SetPriority(DCMI_IRQn, 2, 1);
   HAL_NVIC_EnableIRQ(DCMI_IRQn);
@@ -431,7 +428,6 @@ if (0) {
 
     // if (++count == 20) dcmi_error();
 
-    memset(cur_frame, 0, sizeof cur_frame);
     frame_done = false;
   }
 
@@ -496,6 +492,7 @@ static inline int16_t abs16(int16_t x)
 void consume_frame()
 {
   uint32_t sum = 0;
+  const uint8_t *cur_frame = silhouette_cur_frame();
   for (int i = 0; i < 160 * 120; i++) sum += cur_frame[i];
   if (sum > 160 * 120 * 60) {
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
@@ -714,29 +711,21 @@ void consume_frame()
   (spi_tx_buf[((_strip) * N_SUSPEND + (_suspend)) / 2] &= \
     ((_suspend) % 2 == 0 ? ((_value) | 0xf0) : (0x0f | ((_value) << 4))))
 
+  const uint8_t *resid = silhouette_residual_frame();
+
   for (int i = 0; i < 25; i++) {
     int c = used_columns[i];
     for (int r = 0; r < 200; r++) {
       if (underlying_pattern[r][i]) {
-        // write_buf(c, r, average < noise[i][r] ? 3 : 0);
         // width 150 * height 100
-        uint16_t pixel = (
-          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 0] - base_frame[(r / 2) * 160 + i * 6 + 0]) +
-          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 1] - base_frame[(r / 2) * 160 + i * 6 + 1]) +
-          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 2] - base_frame[(r / 2) * 160 + i * 6 + 2]) +
-          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 3] - base_frame[(r / 2) * 160 + i * 6 + 3]) +
-          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 4] - base_frame[(r / 2) * 160 + i * 6 + 4]) +
-          abs16((int16_t)cur_frame[(r / 2) * 160 + i * 6 + 5] - base_frame[(r / 2) * 160 + i * 6 + 5])
-        /*
-          (int16_t)cur_frame[(r / 2) * 160 + i * 6 + 0] +
-          (int16_t)cur_frame[(r / 2) * 160 + i * 6 + 1] +
-          (int16_t)cur_frame[(r / 2) * 160 + i * 6 + 2] +
-          (int16_t)cur_frame[(r / 2) * 160 + i * 6 + 3] +
-          (int16_t)cur_frame[(r / 2) * 160 + i * 6 + 4] +
-          (int16_t)cur_frame[(r / 2) * 160 + i * 6 + 5]
-        */
+        uint8_t pixel = (
+          (uint16_t)resid[(r / 2) * 160 + i * 6 + 0] +
+          (uint16_t)resid[(r / 2) * 160 + i * 6 + 1] +
+          (uint16_t)resid[(r / 2) * 160 + i * 6 + 2] +
+          (uint16_t)resid[(r / 2) * 160 + i * 6 + 3] +
+          (uint16_t)resid[(r / 2) * 160 + i * 6 + 4] +
+          (uint16_t)resid[(r / 2) * 160 + i * 6 + 5]
         ) / 6;
-        // write_buf(c, r, pixel < 32 ? 0 : 3);
         write_buf(c, r, pixel < 96 ? 0 : 3);
       }
     }
@@ -769,7 +758,6 @@ void dcmi_error() {
   line_count = 0;
   frame_count = 0;
   last_pixel_count = dcmi_buf_size;
-  last_line_count = 0;
 
   HAL_DMA_Init(&dma2_st1_ch1);
   HAL_DCMI_Init(&dcmi);
@@ -812,23 +800,7 @@ void DCMI_IRQHandler() {
         return;
       }
 
-      static uint16_t pixel_4l[160] = { 0 };
-
-      for (int i = 0; i < 320; i++) {
-        uint8_t v1 = (dcmi_buf[start + i] >> 24) & 0xff;
-        uint8_t v2 = (dcmi_buf[start + i] >>  8) & 0xff;
-        if (line_count % 4 == 0) pixel_4l[i / 2] = 0;
-        pixel_4l[i / 2] += ((uint16_t)v1 + v2);
-      }
-
-      if (line_count % 4 == 3) {
-        for (int i = 0; i < 160; i++) {
-          uint16_t pixel = pixel_4l[i] >> 4;
-          cur_frame[(line_count / 4) * 160 + i] = pixel;
-          running_x[(line_count / 4) * 160 + i] += pixel / 4;
-          running_x2[(line_count / 4) * 160 + i] += (uint16_t)(pixel / 4) * (pixel / 4);
-        }
-      }
+      silhouette_feed_line(dcmi_buf + start);
     }
 
     line_count++;
@@ -850,30 +822,7 @@ void DCMI_IRQHandler() {
       // Process frame >o<
       frame_done = true;
 
-      // Process base frame
-      running_count++;
-      if (running_count == 16) {
-        running_count = 0;
-
-/*
-        uint32_t sum = 0;
-        // Sum(x[i]^2 - x2[i] * 16)
-        for (int i = 0; i < 120 * 160; i++)
-          sum += (uint32_t)running_x[i] * running_x[i] + (uint32_t)running_x2[i] * 16;
-
-        static uint16_t ptr = 0;
-        running_sum[ptr] = sum;
-        ptr = (ptr + 1) % 16;
-*/
-
-        for (int i = 0; i < 120 * 160; i++)
-          base_frame[i] = ((uint16_t)base_frame * 3 + running_x[i] / 16) / 4;
-        /* if (!base_frame_initialized) {
-          HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0); HAL_Delay(50);
-          HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
-        } */
-        base_frame_initialized = true;
-      }
+      silhouette_end_frame();
     }
 
     frame_count++;
