@@ -1,6 +1,7 @@
 // gcc main.c -Ilibs/minifb/include -Ilibs/openpnp-capture/include build_libs/minifb/libminifb.a build_libs/openpnp-capture/libopenpnp-capture.0.dylib build_libs/stb_image_resize2.o -framework AppKit -framework Metal -framework MetalKit
 // DYLD_LIBRARY_PATH=build_libs/openpnp-capture ./a.out
 
+// #define SILHOUETTE_SINGLETON 1
 #include "silhouette_detection.h"
 
 #include "MiniFB.h"
