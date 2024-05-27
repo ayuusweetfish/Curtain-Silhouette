@@ -6,11 +6,13 @@
 #include <string.h>
 
 #if SILHOUETTE_SINGLETON
-  #define _d(_field) (_field)
+  #define _d(_field) (_silhouette_f_##_field)
   #define _silhouette_field static
+  #define _silhouette_field_name(_field) (_silhouette_f_##_field)
 #else
   #define _d(_field) (d->_field)
   #define _silhouette_field
+  #define _silhouette_field_name(_field) (_field)
 #endif
 
 #ifndef SILHOUETTE_BASE_FRAME_ATTR
@@ -35,15 +37,15 @@ struct silhouette_detection {
 };
 #endif
 
-  _silhouette_field uint8_t base_frame[120 * 160] SILHOUETTE_BASE_FRAME_ATTR;
-  _silhouette_field uint8_t cur_frame[120 * 160] SILHOUETTE_CUR_FRAME_ATTR;
-  _silhouette_field uint16_t running_x[120 * 160] SILHOUETTE_RUNNING_X_ATTR;
-  _silhouette_field uint16_t running_x2[120 * 160] SILHOUETTE_RUNNING_X2_ATTR;
+  _silhouette_field uint8_t _silhouette_field_name(base_frame)[120 * 160] SILHOUETTE_BASE_FRAME_ATTR;
+  _silhouette_field uint8_t _silhouette_field_name(cur_frame)[120 * 160] SILHOUETTE_CUR_FRAME_ATTR;
+  _silhouette_field uint16_t _silhouette_field_name(running_x)[120 * 160] SILHOUETTE_RUNNING_X_ATTR;
+  _silhouette_field uint16_t _silhouette_field_name(running_x2)[120 * 160] SILHOUETTE_RUNNING_X2_ATTR;
 
-  _silhouette_field uint16_t pixel_4l[160] SILHOUETTE_PIXEL_4L_ATTR;
-  _silhouette_field uint16_t line_count;
-  _silhouette_field uint8_t running_count;
-  _silhouette_field bool base_initialized;
+  _silhouette_field uint16_t _silhouette_field_name(pixel_4l)[160] SILHOUETTE_PIXEL_4L_ATTR;
+  _silhouette_field uint16_t _silhouette_field_name(line_count);
+  _silhouette_field uint8_t _silhouette_field_name(running_count);
+  _silhouette_field bool _silhouette_field_name(base_initialized);
 
 #if !SILHOUETTE_SINGLETON
 };
@@ -145,3 +147,5 @@ static inline const uint8_t *silhouette_residual_frame(struct silhouette_detecti
 }
 
 #undef _d
+#undef _silhouette_field
+#undef _silhouette_field_name
