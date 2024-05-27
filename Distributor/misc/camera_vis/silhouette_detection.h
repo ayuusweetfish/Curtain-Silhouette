@@ -150,6 +150,7 @@ static inline bool silhouette_end_frame(_silhouette_this_arg)
         for (int i = 0; i < 120 * 160; i++)
           _d(base_frame)[i] = ((uint16_t)_d(base_frame)[i] * 3 + _d(running_x)[i] / 4) / 4;
       }
+      memset(_d(stationary_streak), 0, sizeof _d(stationary_streak));
       updated = true;
     } else if (_d(base_initialized)) {
       // Update single pixels, but requires an initial set-up beforehand
@@ -179,11 +180,50 @@ static inline const uint8_t *silhouette_cur_frame(_silhouette_this_arg)
   return _d(cur_frame);
 }
 
+#pragma GCC optimize("O3")
 static inline const uint8_t *silhouette_residual_frame(_silhouette_this_arg)
 {
   // Subtract current frame with base frame
   for (int i = 0; i < 160 * 120; i++) {
     _d(cur_frame)[i] = absdiff8(_d(cur_frame)[i], _d(base_frame)[i]);
+  }
+
+  const int OPEN_CLOSE_KERNEL_SIZE = 4;
+
+  // Closing
+  // (1) Dilation
+  for (int r = 0; r < 120; r++) {
+    for (int c = 0; c < 160; c++) {
+      uint8_t max = 0;
+      for (int dr = 0; dr < OPEN_CLOSE_KERNEL_SIZE; dr++)
+        for (int dc = 0; dc < OPEN_CLOSE_KERNEL_SIZE; dc++) {
+          int r1 = r + dr;
+          int c1 = c + dc;
+          if (r1 >= 0 && r1 < 120 && c1 >= 0 && c1 < 160) {
+            int i1 = r1 * 160 + c1;
+            if (max < _d(cur_frame)[i1])
+              max = _d(cur_frame)[i1];
+          }
+        }
+      _d(cur_frame)[r * 160 + c] = max;
+    }
+  }
+  // (2) Erosion
+  for (int r = 0; r < 120; r++) {
+    for (int c = 0; c < 160; c++) {
+      uint8_t min = 255;
+      for (int dr = 0; dr < OPEN_CLOSE_KERNEL_SIZE; dr++)
+        for (int dc = 0; dc < OPEN_CLOSE_KERNEL_SIZE; dc++) {
+          int r1 = r + dr;
+          int c1 = c + dc;
+          if (r1 >= 0 && r1 < 120 && c1 >= 0 && c1 < 160) {
+            int i1 = r1 * 160 + c1;
+            if (min > _d(cur_frame)[i1])
+              min = _d(cur_frame)[i1];
+          }
+        }
+      _d(cur_frame)[r * 160 + c] = min;
+    }
   }
 
   return _d(cur_frame);
