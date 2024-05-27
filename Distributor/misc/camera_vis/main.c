@@ -111,7 +111,7 @@ int main()
           p_ycbcr[(c ^ 1) * 2 + 0] = 0;
           p_ycbcr[(c ^ 1) * 2 + 1] = luma;
         }
-        silhouette_feed_line(&d, (uint32_t *)p_ycbcr);
+        silhouette_feed_line(&d, (uint32_t *)p_ycbcr, true);
       }
       silhouette_end_frame(&d);
 

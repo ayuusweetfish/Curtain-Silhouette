@@ -37,6 +37,9 @@
 #ifndef SILHOUETTE_PIXEL_4L_ATTR
 #define SILHOUETTE_PIXEL_4L_ATTR
 #endif
+#ifndef SILHOUETTE_STATIONARY_STREAK_ATTR
+#define SILHOUETTE_STATIONARY_STREAK_ATTR
+#endif
 
 struct silhouette_detection {
 
@@ -48,6 +51,7 @@ struct silhouette_detection {
   _silhouette_field uint8_t _silhouette_field_name(cur_frame)[120 * 160] SILHOUETTE_CUR_FRAME_ATTR;
   _silhouette_field uint16_t _silhouette_field_name(running_x)[120 * 160] SILHOUETTE_RUNNING_X_ATTR;
   _silhouette_field uint16_t _silhouette_field_name(running_x2)[120 * 160] SILHOUETTE_RUNNING_X2_ATTR;
+  _silhouette_field uint8_t _silhouette_field_name(stationary_streak)[120 * 160] SILHOUETTE_STATIONARY_STREAK_ATTR;
 
   _silhouette_field uint16_t _silhouette_field_name(pixel_4l)[160] SILHOUETTE_PIXEL_4L_ATTR;
   _silhouette_field uint16_t _silhouette_field_name(line_count);
@@ -63,6 +67,7 @@ struct silhouette_detection {
 static inline void silhouette_init(_silhouette_this_arg)
 {
   memset(_d(pixel_4l), 0, sizeof _d(pixel_4l));
+  memset(_d(stationary_streak), 0, sizeof _d(stationary_streak));
   _d(line_count) = 0;
   _d(running_count) = 0;
   _d(base_initialized) = false;
@@ -112,9 +117,16 @@ static inline bool silhouette_end_frame(_silhouette_this_arg)
     _d(running_count) = 0;
 
     uint32_t sum = 0;
-    // Sum(x[i]^2 - x2[i] * 16)
-    for (int i = 0; i < 120 * 160; i++)
-      sum += (uint32_t)_d(running_x2)[i] * 16 - (uint32_t)_d(running_x)[i] * _d(running_x)[i];
+    // Sum(Sum(x[i]^2) * 16 - Sum(x[i])^2)
+    for (int i = 0; i < 120 * 160; i++) {
+      uint32_t var = (uint32_t)_d(running_x2)[i] * 16 - (uint32_t)_d(running_x)[i] * _d(running_x)[i];
+      sum += var;
+      if (var < 16 * 20) {
+        _d(stationary_streak)[i]++;
+      } else {
+        _d(stationary_streak)[i] = 0;
+      }
+    }
   /*
     for (int r = 0; r < 120; r += 3) {
       for (int c = 0; c < 160; c += 2) {
@@ -134,11 +146,20 @@ static inline bool silhouette_end_frame(_silhouette_this_arg)
           // divide by 16 (frame count), multiply by 4 (prescale)
         _d(base_initialized) = true;
       } else {
+        // Exponential decay / moving average (weight of most recent = 1/4)
         for (int i = 0; i < 120 * 160; i++)
           _d(base_frame)[i] = ((uint16_t)_d(base_frame)[i] * 3 + _d(running_x)[i] / 4) / 4;
       }
-
       updated = true;
+    } else if (_d(base_initialized)) {
+      // Update single pixels, but requires an initial set-up beforehand
+      for (int i = 0; i < 120 * 160; i++) {
+        if (_d(stationary_streak)[i] >= 3) {
+          _d(stationary_streak)[i] = 0;
+          _d(base_frame)[i] = ((uint16_t)_d(base_frame)[i] * 3 + _d(running_x)[i] / 4) / 4;
+        }
+      }
+      // Does not flag `updated`, since this ought to be a mild, unobtrusive update
     }
 
     memset(_d(running_x), 0, sizeof _d(running_x));
@@ -176,5 +197,5 @@ static inline bool silhouette_base_initialized(_silhouette_this_arg)
 #undef _d
 #undef _silhouette_field
 #undef _silhouette_field_name
-#define _silhouette_this_arg
-#define _silhouette_this_arg_
+#undef _silhouette_this_arg
+#undef _silhouette_this_arg_
