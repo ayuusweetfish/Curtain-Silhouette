@@ -1,0 +1,6 @@
+[submodule "Distributor/misc/camera_vis/libs/minifb"]
+	path = Distributor/misc/camera_vis/libs/minifb
+	url = https://github.com/emoon/minifb.git
+[submodule "Distributor/misc/camera_vis/libs/openpnp-capture"]
+	path = Distributor/misc/camera_vis/libs/openpnp-capture
+	url = https://github.com/openpnp/openpnp-capture.git
