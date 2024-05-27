@@ -11,3 +11,5 @@
   cmake ../../libs/openpnp-capture
   make
 )
+
+gcc -O2 -DSTB_IMAGE_RESIZE_IMPLEMENTATION -c -x c stb_image_resize2.h -o build_libs/stb_image_resize2.o
