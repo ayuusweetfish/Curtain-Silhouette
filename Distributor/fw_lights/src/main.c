@@ -57,7 +57,7 @@ uint8_t out_buf_cd[N_SUSPEND][3] = {{ 0 }};
 inline void process_lights();
 inline void run();
 
-#define PIECE_INDEX 1
+// #define PIECE_INDEX 1
 #ifdef PIECE_INDEX
   #define CONSTANT_LIGHTS
   #if PIECE_INDEX == 1

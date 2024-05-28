@@ -496,7 +496,7 @@ void consume_frame()
      0,  2,  4,  5,
      8,  9, 10, 12, 13, 14, 15,
     16, 18, 19, 20, 21, 22, 23,
-    24, 26, 27, 28, 29, 30, 31,
+    24, 25, 26, 27, 28, 29, 31,
 #elif PIECE_INDEX == 2
      0,  2,  3,  5,  6,  7,
      8,  9, 11, 12, 13, 15, 16,
@@ -721,16 +721,14 @@ void consume_frame()
     int c = used_columns[i];
     for (int r = 0; r < 200; r++) {
       if (underlying_pattern[r][i]) {
-        // width 150 * height 100
+        // width 100 * height 100
         uint8_t pixel = (
-          (uint16_t)resid[(r / 2) * 160 + i * 6 + 0] +
-          (uint16_t)resid[(r / 2) * 160 + i * 6 + 1] +
-          (uint16_t)resid[(r / 2) * 160 + i * 6 + 2] +
-          (uint16_t)resid[(r / 2) * 160 + i * 6 + 3] +
-          (uint16_t)resid[(r / 2) * 160 + i * 6 + 4] +
-          (uint16_t)resid[(r / 2) * 160 + i * 6 + 5]
-        ) / 6;
-        write_buf(c, r, pixel < 96 ? 0 : 3);
+          (uint16_t)resid[(r / 2) * 160 + i * 4 + 30 + 0] +
+          (uint16_t)resid[(r / 2) * 160 + i * 4 + 30 + 1] +
+          (uint16_t)resid[(r / 2) * 160 + i * 4 + 30 + 2] +
+          (uint16_t)resid[(r / 2) * 160 + i * 4 + 30 + 3]
+        ) / 4;
+        write_buf(c, r, pixel < 64 ? 0 : 3);
       }
     }
   }
