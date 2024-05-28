@@ -188,41 +188,84 @@ static inline const uint8_t *silhouette_residual_frame(_silhouette_this_arg)
     _d(cur_frame)[i] = absdiff8(_d(cur_frame)[i], _d(base_frame)[i]);
   }
 
-  const int OPEN_CLOSE_KERNEL_SIZE = 4;
+  const int OPEN_CLOSE_RADIUS = 3;
+  const int RMQ_BUF = 8;    // min. OPEN_CLOSE_RADIUS * 2 + 1
+  static uint8_t rmq[RMQ_BUF][4][160];
+  int rmq_ptr;
+
+  const int tnz[128] = {
+    0, 1,
+    2, 2,
+    3, 3, 3, 3,
+    4, 4, 4, 4, 4, 4, 4, 4,
+    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+  };
+
+#define max(_a, _b) ((_a) > (_b) ? (_a) : (_b))
+#define min(_a, _b) ((_a) < (_b) ? (_a) : (_b))
+
+#define build_rmq(_r, _op) do { \
+    for (int c = 0; c < 160; c++) \
+      rmq[rmq_ptr][0][c] = _d(cur_frame)[(_r) * 160 + c]; \
+    for (int k = 1; k < 4; k++) \
+      for (int c = 0; c < 160; c++) { \
+        rmq[rmq_ptr][k][c] = rmq[rmq_ptr][k - 1][c]; \
+        if (c + (1 << (k - 1)) < 160 && rmq[rmq_ptr][k - 1][c + (1 << (k - 1))] _op rmq[rmq_ptr][k][c]) \
+          rmq[rmq_ptr][k][c] = rmq[rmq_ptr][k - 1][c + (1 << (k - 1))]; \
+      } \
+    rmq_ptr = (rmq_ptr + 1) % RMQ_BUF; \
+  } while (0)
+
+#define query_rmq(_best, _line, _c1, _c2, _op) do { \
+    uint8_t len = (_c2) - (_c1) + 1; \
+    /* int k = (sizeof(len)) * 8 - clz8[len] - 1; */ \
+    int k = tnz[len] - 1; \
+    if (rmq[_line][k][(_c1)] _op _best) _best = rmq[_line][k][(_c1)]; \
+    if (rmq[_line][k][(_c2) - (1 << k) + 1] _op _best) _best = rmq[_line][k][(_c2) - (1 << k) + 1]; \
+  } while (0)
 
   // Closing
   // (1) Dilation
+  rmq_ptr = 0;
+  for (int r = 0; r < OPEN_CLOSE_RADIUS; r++) build_rmq(r, >);
   for (int r = 0; r < 120; r++) {
+    if (r + OPEN_CLOSE_RADIUS < 120)
+      build_rmq(r + OPEN_CLOSE_RADIUS, >);
+    int r_min = max(r - OPEN_CLOSE_RADIUS, 0);
+    int r_max = min(r + OPEN_CLOSE_RADIUS, 119);
+    int rmq_line_start = r_min % RMQ_BUF;
+    int rmq_line_end = r_max % RMQ_BUF;
     for (int c = 0; c < 160; c++) {
-      uint8_t max = 0;
-      for (int dr = 0; dr < OPEN_CLOSE_KERNEL_SIZE; dr++)
-        for (int dc = 0; dc < OPEN_CLOSE_KERNEL_SIZE; dc++) {
-          int r1 = r + dr;
-          int c1 = c + dc;
-          if (r1 >= 0 && r1 < 120 && c1 >= 0 && c1 < 160) {
-            int i1 = r1 * 160 + c1;
-            if (max < _d(cur_frame)[i1])
-              max = _d(cur_frame)[i1];
-          }
-        }
-      _d(cur_frame)[r * 160 + c] = max;
+      uint8_t best = 0;
+      for (int line = rmq_line_start; line != rmq_line_end; line = (line + 1) % RMQ_BUF) {
+        int half_len = OPEN_CLOSE_RADIUS;
+        int c_min = max(c - half_len, 0);
+        int c_max = min(c + half_len, 159);
+        query_rmq(best, line, c_min, c_max, >);
+      }
+      _d(cur_frame)[r * 160 + c] = best;
     }
   }
   // (2) Erosion
+  rmq_ptr = 0;
+  for (int r = 0; r < OPEN_CLOSE_RADIUS; r++) build_rmq(r, <);
   for (int r = 0; r < 120; r++) {
+    if (r + OPEN_CLOSE_RADIUS < 120)
+      build_rmq(r + OPEN_CLOSE_RADIUS, <);
+    int r_min = max(r - OPEN_CLOSE_RADIUS, 0);
+    int r_max = min(r + OPEN_CLOSE_RADIUS, 119);
+    int rmq_line_start = r_min % RMQ_BUF;
+    int rmq_line_end = r_max % RMQ_BUF;
     for (int c = 0; c < 160; c++) {
-      uint8_t min = 255;
-      for (int dr = 0; dr < OPEN_CLOSE_KERNEL_SIZE; dr++)
-        for (int dc = 0; dc < OPEN_CLOSE_KERNEL_SIZE; dc++) {
-          int r1 = r + dr;
-          int c1 = c + dc;
-          if (r1 >= 0 && r1 < 120 && c1 >= 0 && c1 < 160) {
-            int i1 = r1 * 160 + c1;
-            if (min > _d(cur_frame)[i1])
-              min = _d(cur_frame)[i1];
-          }
-        }
-      _d(cur_frame)[r * 160 + c] = min;
+      uint8_t best = 255;
+      for (int line = rmq_line_start; line != rmq_line_end; line = (line + 1) % RMQ_BUF) {
+        int half_len = OPEN_CLOSE_RADIUS;
+        int c_min = max(c - half_len, 0);
+        int c_max = min(c + half_len, 159);
+        query_rmq(best, line, c_min, c_max, <);
+      }
+      _d(cur_frame)[r * 160 + c] = best;
     }
   }
 
